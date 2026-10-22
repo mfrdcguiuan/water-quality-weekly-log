@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0B6E78">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="config.js"></script>
+<script defer src="supabase.js"></script>
+<script defer src="xlsx.mini.min.js"></script>
+<title>Water Quality Weekly Log</title>
+<style>
+:root{--bg:#EBF2F1;--card:#FFFFFF;--ink:#0F2A33;--mut:#5A6F77;--line:#D3E0DF;--acc:#0B6E78;--accbg:#DCEFEF;--ok:#237A4B;--okbg:#DDF1E5;--bad:#B93A30;--badbg:#F8E2DF;--band:rgba(35,122,75,.14);--c0:#5A6F77;--c1:#D17A00;--c2:#C23B30;--c3:#2B6FD6;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0B181D;--card:#122429;--ink:#E4F0F0;--mut:#93AAB0;--line:#25424A;--acc:#4FC3CE;--accbg:#143A40;--ok:#5FCB8A;--okbg:#163A28;--bad:#F2877D;--badbg:#42201D;--band:rgba(95,203,138,.15);--c0:#A9BDC2;--c1:#F2A33A;--c2:#F2877D;--c3:#6FA8FF;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0B181D;--card:#122429;--ink:#E4F0F0;--mut:#93AAB0;--line:#25424A;--acc:#4FC3CE;--accbg:#143A40;--ok:#5FCB8A;--okbg:#163A28;--bad:#F2877D;--badbg:#42201D;--band:rgba(95,203,138,.15);--c0:#A9BDC2;--c1:#F2A33A;--c2:#F2877D;--c3:#6FA8FF;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 Figtree,system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2,h3{font-family:"Bricolage Grotesque",Figtree,system-ui,sans-serif;margin:0;line-height:1.15}
+main{max-width:1040px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between;margin-bottom:20px}
+h1{font-size:clamp(26px,5vw,38px);font-weight:700}
+.sub{color:var(--mut);margin:4px 0 0}
+.weeknav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.weeknav strong{min-width:150px;text-align:center;font-weight:600}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 14px;min-height:40px}
+button:hover{border-color:var(--acc)}
+button.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+:root[data-theme="dark"] button.primary{color:#06242A}
+button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:20px}
+section>h2{font-size:22px;margin-bottom:14px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--mut);font-weight:500}
+label small{font-weight:400}
+input,textarea,select{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;min-height:40px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:14px}
+.msg{color:var(--ok);font-weight:500}
+.err{color:var(--bad);font-weight:500}
+.stats{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:12px}
+.stat{background:var(--bg);border-radius:10px;padding:12px 14px}
+.stat b{font:700 28px "Bricolage Grotesque",Figtree,sans-serif;display:block}
+.stat span{color:var(--mut);font-size:14px}
+.attn{margin:0 0 16px;padding:12px 14px;border-radius:10px;background:var(--badbg);color:var(--ink)}
+.attn.good{background:var(--okbg)}
+.cards{display:grid;gap:16px;grid-template-columns:1fr}.charts{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}.ctitle{font-weight:600;font-size:14px;margin:0 0 2px}
+.pcard{border:1px solid var(--line);border-radius:12px;padding:14px}
+.phead{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:6px}
+.phead h3{font-size:18px}
+.phead small{display:block;color:var(--mut);font-weight:400;font-family:Figtree,sans-serif}
+.chip{font-size:13px;font-weight:600;padding:3px 10px;border-radius:99px;white-space:nowrap;background:var(--accbg);color:var(--acc)}
+.chip.ok{background:var(--okbg);color:var(--ok)}
+.chip.bad{background:var(--badbg);color:var(--bad)}
+svg.chart{width:100%;height:auto;display:block}
+.chart .ax{fill:var(--mut);font-size:10px}
+.chart .grid-l{stroke:var(--line);stroke-width:1}
+.chart .band{fill:var(--band)}
+.chart .ln{fill:none;stroke-width:2.2;stroke-linejoin:round}
+.chart .dot{fill:var(--acc);stroke:var(--card);stroke-width:1.5}
+.chart .dot.bad{stroke:var(--bad);stroke-width:3}
+.nums{display:flex;gap:16px;font-size:14px;margin:6px 0 4px}
+.nums span{color:var(--mut)}
+.note{font-size:14px;color:var(--mut);margin:4px 0 0}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.n{white-space:normal;max-width:200px}
+th{color:var(--mut);font-weight:600}
+td.bad{color:var(--bad);font-weight:600}
+td button{min-height:32px;padding:4px 10px;font-size:13px}
+td button.arm{background:var(--badbg);border-color:var(--bad);color:var(--bad)}
+details summary{cursor:pointer;font:600 18px "Bricolage Grotesque",Figtree,sans-serif}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}.tabs button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}:root[data-theme="dark"] .tabs button.on{color:#06242A}.sw{display:inline-block;width:22px;vertical-align:middle;margin-right:6px}table.mini{min-width:0;margin:6px 0 4px;font-size:13px}table.mini th,table.mini td{padding:4px 10px 4px 0}
+[hidden]{display:none!important}
+.narr{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:0 0 16px;background:var(--bg)}.narr h3{font-size:18px;margin:0}.narr p{margin:0 0 10px}.narr .small{font-size:12px;color:var(--mut)}.narr ol.refs{font-size:12px;color:var(--mut);padding-left:22px;margin:8px 0 0}.narr ol.refs li{margin-bottom:4px}
+.ztab{min-width:1100px}.ztab input,.ztab select{width:76px;min-height:34px;padding:4px 6px;font-size:14px}.ztab td,.ztab th{padding:6px 8px}.ztab small{color:var(--mut)}.zl{display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:13px}.zl i{width:12px;height:12px;border-radius:2px;display:inline-block}
+.empty{color:var(--mut);margin:0}
+@media print{header .weeknav button,#entry,#targets,td button,.noprint{display:none!important}body{background:#fff}section{break-inside:avoid;border-color:#ccc}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div>
+    <h1>Water quality weekly log</h1>
+    <p class="sub">Record daily readings, then review each parameter's graph and report for the week.</p>
+  </div>
+  <div class="weeknav">
+    <button id="prev" aria-label="Previous week">Prev</button>
+    <strong id="weeklbl"></strong>
+    <button id="next" aria-label="Next week">Next</button>
+    <button id="today">This week</button><button id="latest">Latest data</button><label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)">Go to <input type="date" id="gotod" aria-label="Go to the week containing this date" style="width:auto"></label>
+  </div>
+</header>
+<p id="dstat" class="note noprint" role="status"></p>
+
+<section id="sync" class="noprint">
+  <h2>Sync</h2>
+  <p id="syncmsg" role="status" class="note" style="margin:0 0 10px">Starting…</p>
+  <form id="login" class="row" style="margin:0" novalidate hidden>
+    <label style="min-width:220px;flex:1">Email<input type="email" id="lemail" autocomplete="username"></label>
+    <label style="min-width:200px;flex:1">Password<input type="password" id="lpass" autocomplete="current-password"></label>
+    <button class="primary" type="submit" style="align-self:flex-end">Sign in</button>
+  </form>
+  <div class="row" id="syncrow" style="margin-top:0" hidden><button type="button" id="syncnow">Sync now</button><button type="button" id="signout">Sign out</button></div>
+</section>
+
+<section id="entry">
+  <h2>Add a reading</h2>
+  <form id="f" novalidate>
+    <div class="grid" id="meta">
+      <label>Date<input type="date" id="d" required></label>
+      <label>Time<input type="time" id="t"></label>
+      <label>Reading<select id="sess"><option value="AM">AM reading</option><option value="PM">PM reading</option><option value="DAY">Whole day (AM and PM)</option></select></label>
+      <label>Treatment<select id="tr" required></select></label>
+      <label>Replicate<select id="rep" required></select></label>
+    </div>
+    <div class="grid" id="pin" style="margin-top:12px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))"></div>
+    <p class="note">Choose AM or PM, then type that session's readings in each box, separated by spaces or commas. Choose Whole day to enter both sessions at once, like a row in your sheet. The app combines every reading for a tank and day into the daily mean.</p>
+    <div class="grid" id="sv" style="margin-top:12px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">
+      <label>Alive count <small>optional, for survival rate</small><input type="number" inputmode="numeric" min="0" id="alive"></label>
+      <label>Initial count <small>stocked in this tank</small><input type="number" inputmode="numeric" min="1" id="init"></label>
+    </div>
+    <label style="margin-top:12px">Notes<textarea id="note" rows="2" placeholder="Water change, feeding, unusual observations"></textarea></label>
+    <div class="row">
+      <button class="primary" type="submit">Save reading</button>
+      <span id="fmsg" role="status"></span>
+    </div>
+  </form>
+</section>
+
+<section id="zoea" class="noprint">
+  <h2>Daily zoea monitoring sheet</h2>
+  <p class="note" style="margin:0 0 12px">Record the sub-sample counts and the stage of the sampled zoeae for each tank, as in your Survival and Composition sheet. Estimated count = sum of the counts &times; multiplier; survival = estimated count &divide; stocked per tank. Saving again for the same date replaces that day.</p>
+  <div class="grid" id="zhead" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr))">
+    <label>Date<input type="date" id="zd"></label>
+    <label>Run<input type="text" id="zrun" placeholder="e.g. Run 9"></label>
+    <label>Stocking (spawn) date<input type="date" id="zsd"></label>
+    <label>Day of culture<input type="text" id="zdoc" readonly></label>
+    <label>Multiplier<input type="number" id="zmult" value="40" min="0" step="any"></label>
+  </div>
+  <div class="scroll" style="margin-top:12px"><table id="ztable" class="ztab"></table></div>
+  <div class="row"><button class="primary" type="button" id="zsave">Save zoea sheet</button><button type="button" id="zload">Reload saved values for this date</button><button type="button" id="zclear">Clear sheet</button><span id="zmsg" role="status"></span></div>
+</section>
+
+<section id="import" class="noprint">
+  <details>
+    <summary>Import from a file or your spreadsheet</summary>
+    <p class="note" style="margin:8px 0 10px">Save or download your daily-record sheet as .xlsx or .csv (in Google Sheets: File, then Download), and choose it here. The app reads the tank rows (T1R1 to T4R3) from the daily block and calculates the daily means. If a tank and date are already saved, the imported values replace them, so you can import an updated file again at any time. For a .csv file, export the sheet tab you want.</p>
+    <p class="note" style="margin:0 0 8px">Easiest way to import everything at once: download the CSV template, fill in one row per tank per day with all parameters in that row, save it as .csv, and choose it below. Your own sheet layout also works.</p>
+    <div class="row" style="margin:0 0 10px"><button type="button" id="tpl">Download CSV template</button></div>
+    <div class="row" style="margin-top:0"><label style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)">Choose file <input type="file" id="ifile" accept=".xlsx,.xls,.csv,.tsv,.txt" style="width:auto"></label></div>
+    <div class="row" id="shrow" hidden><label style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)">Sheet <select id="shsel" style="width:auto;max-width:100%"></select></label><button class="primary" type="button" id="goimp">Import this sheet</button></div>
+    <p id="imsg" role="status" style="margin:8px 0 0"></p>
+    <h3 style="font-size:16px;margin:18px 0 6px">Or paste cells</h3>
+    <p class="note" style="margin:8px 0 10px">In the sheet, select the daily block (the rows from T1R1 to T4R3, together with the row that shows the date), copy it, and paste it here. Daily means are calculated for you. If a tank and date are already saved, the pasted values replace them. If no date is found in the paste, the Date field above is used.</p>
+    <textarea id="paste" rows="6" placeholder="Paste copied cells here"></textarea>
+    <div class="row"><button class="primary" id="doimp" type="button">Import pasted rows</button><span id="pmsg" role="status"></span></div>
+  </details>
+</section>
+
+<section id="report">
+  <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+    <h2 style="margin:0">Weekly report</h2>
+    <span class="noprint" style="display:flex;gap:8px;flex-wrap:wrap"><button id="rephtml" type="button">Download report (HTML)</button><button id="xls" type="button">Download Excel</button><button id="print" type="button">Print report</button></span>
+  </div>
+  <div class="tabs noprint" id="tabs" role="tablist" aria-label="Treatment view"></div>
+  <div class="stats" id="stats"></div>
+  <p class="attn" id="attn"></p>
+  <div class="narr" id="narr"></div>
+  <div class="cards" id="cards"></div>
+  <div id="zrep"></div>
+</section>
+
+<section>
+  <h2>Readings this week</h2>
+  <p class="note" style="margin:-6px 0 10px">Values are daily means. Hover a value to see the individual readings.</p>
+  <div class="scroll" id="tbl"></div>
+</section>
+
+<section id="data" class="noprint">
+  <h2>Your data</h2>
+  <p class="note" style="margin:-6px 0 12px">Readings are saved on this device first and uploaded to your Supabase project when you are online and signed in. Download a CSV, an Excel file or a backup now and then to keep your own copy.</p>
+  <div class="row" style="margin-top:0"><button id="csv" type="button">Download CSV</button><button id="zcsv" type="button">Download zoea CSV</button><button id="bak" type="button">Download backup</button><label style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)">Restore backup <input type="file" id="rest" accept=".json,application/json" style="width:auto"></label><span id="emsg" role="status"></span></div>
+  <p class="note">Free to use. Readings are sent only to your own Supabase project.</p>
+</section>
+
+<section id="targets">
+  <details>
+    <summary>Target ranges</summary>
+    <p class="note" style="margin:8px 0 12px">Defaults suit seawater culture. Change them to match your species; the graphs and report update right away.</p>
+    <div class="grid" id="tgrid"></div>
+    <h3 style="font-size:17px;margin:18px 0 8px">Temperature by treatment</h3>
+    <p class="note" style="margin:0 0 10px">Control is ambient hatchery water, so set its range to what the hatchery normally runs. Treatments default to the set temperature ±1 °C.</p>
+    <div class="grid" id="ttgrid"></div>
+  </details>
+</section>
+</main>
+
+<script>
+(function(){
+var P=[
+ {k:'temp',n:'Temperature',u:'°C',min:20,max:28,dec:1,step:0.1},
+ {k:'sal',n:'Salinity',u:'ppt',min:30,max:35,dec:1,step:0.1},
+ {k:'ph',n:'pH',u:'',min:7.8,max:8.4,dec:2,step:0.01},
+ {k:'do',n:'Dissolved oxygen',u:'mg/L',min:4,max:14,dec:2,step:0.1},
+ {k:'surv',s:1,n:'Survival rate',u:'%',min:0,max:100,dec:1,step:0.1},
+ 
+ 
+ 
+];
+var TR=[
+ {id:'c',code:'T1',n:'T1 · Control (ambient)',tab:'T1 · Control',sub:'Ambient hatchery water',col:'var(--c0)',dash:'',tmin:25,tmax:29},
+ {id:'t1',code:'T2',n:'T2 · 30 °C',tab:'T2 · 30 °C',sub:'30 °C',col:'var(--c1)',dash:'6 3',tmin:29,tmax:31},
+ {id:'t2',code:'T3',n:'T3 · 32 °C',tab:'T3 · 32 °C',sub:'32 °C',col:'var(--c2)',dash:'2 3',tmin:31,tmax:33},
+ {id:'t3',code:'T4',n:'T4 · 26 °C',tab:'T4 · 26 °C',sub:'26 °C',col:'var(--c3)',dash:'10 3 2 3',tmin:25,tmax:27}
+];
+var DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+var entries=[];
+var ranges=load('wq-ranges',{});
+var tt=load('wq-tt',{});
+var inits=load('wq-init',{});
+P.forEach(function(p){var r=ranges[p.k];if(r&&isFinite(r.min)&&isFinite(r.max)){p.min=r.min;p.max=r.max}});
+TR.forEach(function(t){var r=tt[t.id];if(r&&isFinite(r.min)&&isFinite(r.max)){t.tmin=r.min;t.tmax=r.max}});
+function $(i){return document.getElementById(i)}
+function p2(n){return n<10?'0'+n:''+n}
+function ymd(d){return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())}
+function parse(s){return new Date(s+'T00:00:00')}
+function monday(d){var x=new Date(d);x.setDate(x.getDate()-((x.getDay()+6)%7));x.setHours(0,0,0,0);return x}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function fx(p,v){return Number(v.toFixed(p.dec))}
+function trOf(e){return e.tr||'c'}
+function tById(id){return TR.filter(function(t){return t.id===id})[0]}
+function rng(p,tid){if(p.k==='temp'&&tid!=='all'){var t=tById(tid);return{min:t.tmin,max:t.tmax}}return{min:p.min,max:p.max}}
+var ws=monday(new Date()),view='all';
+
+$('tr').innerHTML='<option value="">Select treatment</option>'+TR.map(function(t){return '<option value="'+t.id+'">'+t.n+'</option>'}).join('');
+$('rep').innerHTML='<option value="">Select replicate</option>'+[1,2,3].map(function(r){return '<option value="'+r+'">Replicate '+r+'</option>'}).join('');
+var HINT={temp:'8AM to 5PM hourly, e.g. 28.1 28 28.3',do:'8AM 5PM, e.g. 4.6 4.8',sal:'AM PM, e.g. 35 35',ph:'AM PM, e.g. 8.42 8.6'};
+$('pin').innerHTML=P.filter(function(p){return !p.s}).map(function(p){return '<label>'+p.n+' <small>'+(p.u||'')+'</small><input type="text" inputmode="decimal" autocomplete="off" placeholder="'+HINT[p.k]+'" id="in-'+p.k+'"></label>'}).join('');
+$('tgrid').innerHTML=P.filter(function(p){return p.k!=='temp'&&!p.s}).map(function(p){return '<div><label>'+p.n+' <small>'+(p.u||'')+'</small></label><div style="display:flex;gap:6px;margin-top:4px"><input type="number" step="any" id="mn-'+p.k+'" value="'+p.min+'" aria-label="'+p.n+' minimum"><input type="number" step="any" id="mx-'+p.k+'" value="'+p.max+'" aria-label="'+p.n+' maximum"></div></div>'}).join('');
+$('ttgrid').innerHTML=TR.map(function(t){return '<div><label>'+t.n+' <small>°C</small></label><div style="display:flex;gap:6px;margin-top:4px"><input type="number" step="any" id="tm-'+t.id+'" value="'+t.tmin+'" aria-label="'+t.n+' minimum temperature"><input type="number" step="any" id="tx-'+t.id+'" value="'+t.tmax+'" aria-label="'+t.n+' maximum temperature"></div></div>'}).join('');
+P.filter(function(p){return p.k!=='temp'&&!p.s}).forEach(function(p){['mn-','mx-'].forEach(function(pre){$(pre+p.k).addEventListener('change',function(){
+  var a=parseFloat($('mn-'+p.k).value),b=parseFloat($('mx-'+p.k).value);
+  if(isFinite(a)&&isFinite(b)&&a<b){p.min=a;p.max=b;ranges[p.k]={min:a,max:b};saveSettings();render()}
+})})});
+TR.forEach(function(t){['tm-','tx-'].forEach(function(pre){$(pre+t.id).addEventListener('change',function(){
+  var a=parseFloat($('tm-'+t.id).value),b=parseFloat($('tx-'+t.id).value);
+  if(isFinite(a)&&isFinite(b)&&a<b){t.tmin=a;t.tmax=b;tt[t.id]={min:a,max:b};saveSettings();render()}
+})})});
+
+function now(){var n=new Date();return p2(n.getHours())+':'+p2(n.getMinutes())}
+$('d').value=ymd(new Date());$('t').value=now();
+function prefill(){var v=inits[$('tr').value+'-'+$('rep').value];if(v)$('init').value=v}
+$('tr').addEventListener('change',prefill);$('rep').addEventListener('change',prefill);
+var HINTS={AM:{temp:'8AM to 11AM hourly, e.g. 28.1 28 28.3',do:'8AM reading, e.g. 4.6',sal:'AM reading, e.g. 35',ph:'AM reading, e.g. 8.42'},PM:{temp:'12NN to 5PM hourly, e.g. 28.4 28.5 28.2',do:'5PM reading, e.g. 4.8',sal:'PM reading, e.g. 35',ph:'PM reading, e.g. 8.6'},DAY:{temp:'Hourly, 8AM to 5PM (first four = AM)',do:'8AM 5PM, e.g. 4.6 4.8',sal:'AM PM, e.g. 35 35',ph:'AM PM, e.g. 8.42 8.6'}};
+function setHints(){var h=HINTS[$('sess').value]||HINTS.DAY;P.forEach(function(p){if(!p.s)$('in-'+p.k).placeholder=h[p.k]})}
+$('sess').value=new Date().getHours()<12?'AM':'PM';$('sess').addEventListener('change',setHints);setHints();
+
+$('f').addEventListener('submit',function(ev){
+  ev.preventDefault();
+  var date=$('d').value,vals={},any=false;
+  if(!date){msg('Choose a date.',1);return}
+  if(!$('tr').value){msg('Choose a treatment.',1);return}
+  if(!$('rep').value){msg('Choose a replicate.',1);return}
+  var raw={},bad=false;
+  P.forEach(function(p){if(p.s)return;var s=$('in-'+p.k).value.trim();if(!s)return;var a=s.split(/[\s,;]+/).map(Number);if(a.some(function(n){return !isFinite(n)})){bad=true;return}raw[p.k]=a;vals[p.k]=a.reduce(function(x,y){return x+y},0)/a.length;any=true});
+  if(bad){msg('Use numbers only, separated by spaces or commas.',1);return}
+  var al=$('alive').value,ini=parseFloat($('init').value),surv=null;
+  if(al!==''){var alv=parseFloat(al);if(!isFinite(alv)||alv<0||!(ini>0)){msg('For survival, enter both the alive count and the initial count.',1);return}if(alv>ini){msg('Alive count cannot exceed the initial count.',1);return}vals.surv=alv/ini*100;surv={alive:alv,init:ini};any=true}
+  if(ini>0&&inits[$('tr').value+'-'+$('rep').value]!==ini){inits[$('tr').value+'-'+$('rep').value]=ini;saveSettings()}
+  if(!any){msg('Enter at least one parameter value.',1);return}
+  putEntries([{id:Date.now()+''+Math.floor(Math.random()*1000),date:date,time:$('t').value||'',tr:$('tr').value,rep:parseInt($('rep').value,10),sess:$('sess').value,vals:vals,raw:raw,surv:surv,note:$('note').value.trim()}],false);
+  P.forEach(function(p){if(!p.s)$('in-'+p.k).value=''});$('alive').value='';$('note').value='';$('t').value=now();
+  ws=monday(parse(date));
+  msg(({AM:'AM',PM:'PM',DAY:'Whole-day'})[$('sess').value]+' reading saved for '+tById($('tr').value).n+', replicate '+$('rep').value+'.');render();
+});
+function msg(t,bad){var m=$('fmsg');m.textContent=t;m.className=bad?'err':'msg';clearTimeout(msg.t);msg.t=setTimeout(function(){m.textContent=''},3500)}
+
+$('prev').onclick=function(){ws.setDate(ws.getDate()-7);render()};
+$('next').onclick=function(){ws.setDate(ws.getDate()+7);render()};
+$('today').onclick=function(){ws=monday(new Date());render()};
+$('print').onclick=function(){try{window.print()}catch(e){}};
+$('tabs').addEventListener('click',function(ev){var b=ev.target.closest('button[data-v]');if(b){view=b.dataset.v;render()}});
+
+$('tbl').addEventListener('click',function(ev){
+  var b=ev.target.closest('button[data-id]');if(!b)return;
+  if(!b.classList.contains('arm')){b.classList.add('arm');b.textContent='Confirm?';setTimeout(function(){if(b.isConnected){b.classList.remove('arm');b.textContent='Delete'}},3000);return}
+  removeEntry(b.dataset.id);
+});
+
+function chart(p,series,band,dom){
+  var W=320,H=150,L=40,R=10,T=10,B=22;
+  var all=[];series.forEach(function(s){s.means.forEach(function(m){if(m!=null)all.push(m)})});
+  if(band)all.push(band.min,band.max);
+  var l0=all.length?Math.min.apply(null,all):0,h0=all.length?Math.max.apply(null,all):1;if(dom){l0=dom[0];h0=dom[1]}
+  var pad=(h0-l0)*0.12||1,lo=l0-pad,hi=h0+pad;if(l0>=0&&lo<0)lo=0;
+  var x=function(i){return L+(W-L-R)*i/6},y=function(v){return T+(H-T-B)*(1-(v-lo)/(hi-lo))};
+  var s='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(p.n)+' daily average for the week">';
+  if(band)s+='<rect class="band" x="'+L+'" y="'+y(band.max)+'" width="'+(W-L-R)+'" height="'+Math.max(1,y(band.min)-y(band.max))+'"/>';
+  [lo,(lo+hi)/2,hi].forEach(function(v){s+='<line class="grid-l" x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'"/><text class="ax" x="'+(L-5)+'" y="'+(y(v)+3)+'" text-anchor="end">'+fx(p,v)+'</text>'});
+  DN.forEach(function(d,i){s+='<text class="ax" x="'+x(i)+'" y="'+(H-6)+'" text-anchor="middle">'+d+'</text>'});
+  series.forEach(function(sr){
+    var pts=[];sr.means.forEach(function(m,i){if(m!=null)pts.push({i:i,v:m})});
+    var st='style="stroke:'+sr.col+'"'+(sr.dash?' stroke-dasharray="'+sr.dash+'"':'');
+    if(pts.length>1)s+='<polyline class="ln" '+st+' points="'+pts.map(function(q){return x(q.i)+','+y(q.v)}).join(' ')+'"/>';
+    pts.forEach(function(q){var bad=q.v<sr.rg.min||q.v>sr.rg.max;s+='<circle class="dot'+(bad?' bad':'')+'" style="fill:'+sr.col+'" cx="'+x(q.i)+'" cy="'+y(q.v)+'" r="4"><title>'+sr.t.n+' '+DN[q.i]+': '+fx(p,q.v)+' '+p.u+'</title></circle>'});
+  });
+  return s+'</svg>';
+}
+
+var lastSummary=[],NS={};function render(){lastSummary=[];NS={};dataStat();
+  var days=[];for(var i=0;i<7;i++){var d=new Date(ws);d.setDate(d.getDate()+i);days.push(ymd(d))}
+  var a=parse(days[0]),b=parse(days[6]),o={month:'short',day:'numeric'};
+  $('weeklbl').textContent=a.toLocaleDateString(undefined,o)+' – '+b.toLocaleDateString(undefined,o)+', '+b.getFullYear();
+  $('tabs').innerHTML=[{id:'all',tab:'All treatments'}].concat(TR).map(function(t){return '<button type="button" data-v="'+t.id+'" role="tab" aria-selected="'+(view===t.id)+'" class="'+(view===t.id?'on':'')+'">'+t.tab+'</button>'}).join('');
+  var scope=view==='all'?TR:[tById(view)];
+  var es=entries.filter(function(e){return days.indexOf(e.date)>-1&&(view==='all'||trOf(e)===view)}).sort(function(x,y){return (x.date+x.time).localeCompare(y.date+y.time)});
+  var logged={},trs={};es.forEach(function(e){logged[e.date]=1;trs[trOf(e)]=1});
+  var nDays=Object.keys(logged).length,nTr=Object.keys(trs).length,clean=0,attn=[],cards='';
+  P.forEach(function(p){
+    var ser=scope.map(function(t){
+      var rg=rng(p,t.id);
+      var vals=[];es.forEach(function(e){if(trOf(e)!==t.id||(t.rep&&e.rep!==t.rep)||e.vals[p.k]==null)return;var rw=e.raw&&e.raw[p.k];if(rw&&rw.length)rw.forEach(function(v,i){vals.push({d:e.date,v:v,s:sessOf(e,p.k,i)})});else vals.push({d:e.date,v:e.vals[p.k],s:(e.sess==='AM'||e.sess==='PM')?e.sess:null})});
+      var out=vals.filter(function(x){return x.v<rg.min||x.v>rg.max});
+      var means=days.map(function(dd){var r=vals.filter(function(x){return x.d===dd});return r.length?r.reduce(function(s,x){return s+x.v},0)/r.length:null});
+      var dmean=function(s){return days.map(function(dd){var r=vals.filter(function(x){return x.d===dd&&x.s===s});return r.length?r.reduce(function(a,x){return a+x.v},0)/r.length:null})};
+      var n=vals.length,av=n?vals.reduce(function(s,x){return s+x.v},0)/n:null;
+      return{t:t,rg:rg,vals:vals,out:out,means:means,mAM:dmean('AM'),mPM:dmean('PM'),aAM:avgS(vals,'AM'),aPM:avgS(vals,'PM'),col:t.col,dash:t.dash,av:av,mn:n?Math.min.apply(null,vals.map(function(x){return x.v})):null,mx:n?Math.max.apply(null,vals.map(function(x){return x.v})):null};
+    });
+    var has=ser.filter(function(s){return s.vals.length}),totOut=0,totN=0;
+    ser.forEach(function(s){totOut+=s.out.length;totN+=s.vals.length;if(s.out.length)attn.push(p.n+' – '+s.t.n+' ('+s.out.length+' of '+s.vals.length+')')});
+    if(has.length&&!totOut&&!p.s)clean++;
+    var band=p.s?null:view==='all'?(p.k==='temp'?null:{min:p.min,max:p.max}):ser[0].rg;
+    var tgt=p.s?'Alive count divided by initial stock':view==='all'&&p.k==='temp'?'Target set per treatment':'Target '+fx(p,band.min)+'–'+fx(p,band.max)+(p.u?' '+p.u:'');
+    var chip=!totN?'<span class="chip">No data</span>':totOut?'<span class="chip bad">'+totOut+' of '+totN+' out of range</span>':'<span class="chip ok">In range</span>';
+    var note;
+    if(!totN)note='No readings logged for this parameter this week.';
+    else if(view==='all'){
+      var srt=has.slice().sort(function(x,y){return x.av-y.av});
+      note=has.length>1?'Weekly averages ran from '+fx(p,srt[0].av)+' ('+srt[0].t.n+') to '+fx(p,srt[srt.length-1].av)+' ('+srt[srt.length-1].t.n+')'+(p.u?' '+p.u:'')+'.':'Only '+has[0].t.n+' has data this week.';
+    }else{
+      var pv=[].concat.apply([],ser.map(function(s){return s.vals})),s0={rg:ser[0].rg,out:[].concat.apply([],ser.map(function(s){return s.out}))},pm=days.map(function(dd){var r=pv.filter(function(x){return x.d===dd});return r.length?r.reduce(function(a,x){return a+x.v},0)/r.length:null}),m2=pm.filter(function(m){return m!=null}),tr='';
+      if(m2.length>1){var df=m2[m2.length-1]-m2[0],th=(s0.rg.max-s0.rg.min)*0.1||0.05;tr=Math.abs(df)<th?' Daily averages stayed steady.':' Daily averages '+(df>0?'rose':'fell')+' from '+fx(p,m2[0])+' to '+fx(p,m2[m2.length-1])+(p.u?' '+p.u:'')+'.'}
+      var dd2=s0.out.map(function(x){return DN[days.indexOf(x.d)]}).filter(function(v,i,r){return r.indexOf(v)===i});
+      note=(s0.out.length?'Out of range on '+dd2.join(', ')+'.':(p.s?'':'All readings stayed within target.'))+tr;
+    }
+    has.forEach(function(s){lastSummary.push([$('weeklbl').textContent,p.n+(p.u?' ('+p.u+')':''),s.t.n,fx(p,s.av),s.aAM==null?'':fx(p,s.aAM),s.aPM==null?'':fx(p,s.aPM),fx(p,s.mn),fx(p,s.mx),s.out.length,s.vals.length])});NS[p.k]=has.map(function(s){return{id:s.t.id,n:s.vals.length,av:s.av,aAM:s.aAM,aPM:s.aPM,mn:s.mn,mx:s.mx,means:s.means}});var mini=has.length?'<table class="mini"><thead><tr><th>Treatment</th><th>Mean</th>'+(p.s?'':'<th>AM mean</th><th>PM mean</th>')+'<th>Min–max</th><th>Out</th></tr></thead><tbody>'+has.map(function(s){return '<tr><td><span class="sw" style="border-top:3px '+(s.dash?'dashed':'solid')+' '+s.col+'"></span>'+s.t.n+'</td><td>'+fx(p,s.av)+'</td>'+(p.s?'':'<td>'+(s.aAM==null?'–':fx(p,s.aAM))+'</td><td>'+(s.aPM==null?'–':fx(p,s.aPM))+'</td>')+'<td>'+fx(p,s.mn)+'–'+fx(p,s.mx)+'</td><td'+(s.out.length?' class="bad"':'')+'>'+s.out.length+' of '+s.vals.length+'</td></tr>'}).join('')+'</tbody></table>':'';
+    cards+='<article class="pcard"><div class="phead"><h3>'+p.n+'<small>'+tgt+'</small></h3>'+chip+'</div>'+charts(p,ser,band)+mini+'<p class="note">'+note+'</p></article>';
+  });
+  renderZoea(days);renderNarr(es.length,nDays);
+  $('stats').innerHTML='<div class="stat"><b>'+es.length+'</b><span>readings logged</span></div><div class="stat"><b>'+nDays+' of 7</b><span>days with data</span></div><div class="stat"><b>'+(view==='all'?nTr+' of '+TR.length:clean+' of '+(P.length-1))+'</b><span>'+(view==='all'?'treatments with data':'parameters in range all week')+'</span></div>'+(view==='all'?'<div class="stat"><b>'+clean+' of '+(P.length-1)+'</b><span>parameters in range for every treatment</span></div>':'');
+  var at=$('attn');
+  if(!es.length){at.className='attn';at.textContent='No readings for this view yet. Add one above to start the report.'}
+  else if(attn.length){at.className='attn';at.textContent='Needs attention: '+attn.join('; ')+'.'}
+  else{at.className='attn good';at.textContent='Every recorded parameter stayed within its target range this week.'}
+  $('cards').innerHTML=cards;
+  if(!es.length){$('tbl').innerHTML='<p class="empty">Nothing logged for this view.</p>'}
+  else{
+    var h='<table><thead><tr><th>Date</th><th>Session</th><th>Time</th><th>Treatment</th><th>Tank</th>'+P.map(function(p){return '<th>'+p.n.split(' (')[0]+(p.u?' ('+p.u+')':'')+'</th>'}).join('')+'<th>By</th><th>Notes</th><th></th></tr></thead><tbody>';
+    es.forEach(function(e){
+      var t=tById(trOf(e));
+      h+='<tr><td>'+DN[days.indexOf(e.date)]+' '+e.date.slice(5)+'</td><td>'+(e.sess==='AM'||e.sess==='PM'?e.sess:'Day')+'</td><td>'+esc(e.time)+'</td><td>'+t.n+'</td><td>'+(e.rep?t.code+'R'+e.rep:'')+'</td>';
+      P.forEach(function(p){var v=e.vals[p.k];if(v==null){h+='<td>–</td>'}else{var rg=rng(p,t.id);h+='<td'+(v<rg.min||v>rg.max?' class="bad"':'')+' title="'+(e.raw&&e.raw[p.k]?e.raw[p.k].join(', '):'')+'">'+fx(p,v)+'</td>'}});
+      h+='<td>'+esc((e.by||'').split('@')[0])+'</td><td class="n">'+esc(e.note)+'</td><td>'+(canWrite?'<button data-id="'+e.id+'">Delete</button>':'')+'</td></tr>';
+    });
+    $('tbl').innerHTML=h+'</tbody></table>';fillNames();
+  }
+}
+function dl(name,mime,text){if(dlNS){dlNS.save({filename:name,data:text}).catch(function(){});return}try{var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:mime}));a.download=name;document.body.appendChild(a);a.click();a.remove()}catch(e){}}
+function emsg(t,bad){var m=$('emsg');m.textContent=t;m.className=bad?'err':'msg'}
+function pmsg(t,bad){var m=$(pmT);m.textContent=t;m.className=bad?'err':'msg'}
+function readingRows(){
+  var rows=[['Date','Session','Time','Treatment','Tank','Temperature mean (C)','Temperature readings','Dissolved oxygen mean (mg/L)','DO readings','Salinity mean (ppt)','Salinity readings','pH mean','pH readings','Alive','Initial','Survival (%)','Notes']];
+  entries.slice().sort(function(a,b){return (a.date+(a.time||'')).localeCompare(b.date+(b.time||''))}).forEach(function(e){
+    var t=tById(trOf(e)),r=e.raw||{},v=e.vals||{},s=e.surv||{};
+    var m=function(k){return v[k]==null?'':Number(v[k].toFixed(3))},rr=function(k){return r[k]?r[k].join(' '):''};
+    rows.push([e.date,e.sess||'',e.time||'',t.n,e.rep?t.code+'R'+e.rep:'',m('temp'),rr('temp'),m('do'),rr('do'),m('sal'),rr('sal'),m('ph'),rr('ph'),s.alive==null?'':s.alive,s.init==null?'':s.init,m('surv'),e.note||'']);
+  });
+  return rows;
+}
+$('csv').onclick=function(){
+  var q=function(s){s=String(s==null?'':s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+  dl('water-quality-log.csv','text/csv',readingRows().map(function(r){return r.map(q).join(',')}).join('\n'));
+};
+$('xls').onclick=function(){
+  if(typeof XLSX==='undefined'){emsg('The Excel library could not load, so Excel export is unavailable. Use Download CSV instead.',1);return}
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(readingRows()),'Readings');
+  var sm=[['Week','Parameter','Treatment','Mean','AM mean','PM mean','Min','Max','Readings out of range','Readings']].concat(lastSummary);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sm),'Weekly summary');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(zoeaRows()),'Zoea monitoring');
+  dl('water-quality-log.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',XLSX.write(wb,{type:'array',bookType:'xlsx'}));
+};
+$('rephtml').onclick=function(){
+  var clone=$('report').cloneNode(true);
+  [].slice.call(clone.querySelectorAll('.noprint')).forEach(function(n){n.remove()});
+  var css=document.querySelector('style').textContent;
+  var html='<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Water quality weekly report</title><style>'+css+'</style></head><body><main><h1>Water quality weekly report</h1><p class="sub">'+esc($('weeklbl').textContent)+'</p><section>'+clone.innerHTML+'</section></main></body></html>';
+  dl('water-quality-report-'+ymd(ws)+'.html','text/html',html);
+};
+$('bak').onclick=function(){dl('water-quality-backup.json','application/json',JSON.stringify({entries:entries,zoea:zList()}))};
+$('rest').addEventListener('change',function(){
+  var f=this.files[0];if(!f)return;var rd=new FileReader();
+  rd.onload=function(){try{var o=JSON.parse(rd.result),ids={};entries.forEach(function(e){ids[e.id]=1});var add=(o.entries||[]).filter(function(e){return e&&e.id&&!ids[e.id]&&e.date&&e.vals});putEntries(add,false);var zadd=(o.zoea||[]).filter(function(r){return r&&r.id&&r.date&&r.tank&&!zrows[r.id]});zadd.forEach(function(r){r.deleted=false;zrows[r.id]=r;zoutbox[r.id]=1});if(zadd.length){zpersist();scheduleSync()}emsg('Restored '+add.length+' readings'+(zadd.length?' and '+zadd.length+' zoea records':'')+'.');render()}catch(er){emsg('That file is not a valid backup.',1)}};
+  rd.readAsText(f);this.value='';
+});
+var pmT='pmsg';
+function runImport(txt,t){pmT=t;if(isTemplate(txt)){importTemplate(txt);return}
+  if(!txt.trim()){pmsg('Nothing to import. Paste cells or choose a file first.',1);return}
+  var MON={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+  var cur=$('d').value,n=0,skip=0,ds={},last='',seen={},dup={},dn=0,batch=[];
+  var avg=function(a){return a.reduce(function(x,y){return x+y},0)/a.length};
+  txt.split(/\r?\n/).forEach(function(line){
+    var c=line.split('\t').map(function(x){return x.replace(/^"|"$/g,'').trim()}),i;
+    for(i=0;i<Math.min(c.length,5);i++){var m=c[i].match(/^([A-Za-z]{3})[A-Za-z]*\.?\s+(\d{1,2})[,.]?\s+(\d{4})$/);if(m&&MON[m[1].toLowerCase()]){cur=m[3]+'-'+p2(MON[m[1].toLowerCase()])+'-'+p2(+m[2]);break}}
+    var ti=-1;for(i=0;i<Math.min(c.length,4);i++){if(/^T[1-4]R[1-3]$/i.test(c[i])){ti=i;break}}
+    if(ti<0)return;
+    if(!cur){skip++;return}
+    var code=c[ti].toUpperCase(),tid=TR[+code[1]-1].id,rep=+code[3];
+    var sl={};
+    var nums=function(a,b,k){var r=[],ix=[];for(var j=a;j<=b;j++){var v=c[j];if(v!==undefined&&v!==''&&isFinite(Number(v))){r.push(Number(v));ix.push(j-a)}}sl[k]=ix;return r};
+    var raw={temp:nums(ti+2,ti+11,'temp'),do:nums(ti+13,ti+14,'do'),sal:nums(ti+16,ti+17,'sal'),ph:nums(ti+19,ti+20,'ph')},vals={},any=false;
+    Object.keys(raw).forEach(function(k){if(raw[k].length){vals[k]=avg(raw[k]);any=true}else{delete raw[k]}});
+    if(!any){skip++;return}
+    var key=cur+'|'+tid+'|'+rep;if(seen[key]){dn++;dup[cur]=1;return}seen[key]=1;
+        batch.push({id:Date.now()+''+n+Math.floor(Math.random()*1000),date:cur,time:'',tr:tid,rep:rep,vals:vals,raw:raw,sl:sl,note:(c[ti+22]||'')});
+    n++;ds[cur]=1;last=cur;
+  });
+  if(!n){pmsg('No tank rows found. Copy the daily block from your sheet (the rows starting with T1R1 to T4R3) and try again.',1);return}
+  putEntries(batch,true);ws=monday(parse(last));$('paste').value='';
+  var nd=Object.keys(ds).length;
+  pmsg('Imported '+n+' tank-day'+(n>1?'s':'')+' across '+nd+' date'+(nd>1?'s':'')+(skip?'; skipped '+skip+' empty rows':'')+'.'+(dn?' Skipped '+dn+' rows whose date already appeared earlier in the paste ('+Object.keys(dup).join(', ')+'). Check those date headers in your sheet.':''));render();
+}
+function sessOf(e,k,i){
+  if(e.sess==='AM'||e.sess==='PM')return e.sess;
+  var ix=e.sl&&e.sl[k]&&e.sl[k][i]!=null?e.sl[k][i]:i;
+  return k==='temp'?(ix<4?'AM':'PM'):(ix<1?'AM':'PM');
+}
+function avgS(vals,s){var r=vals.filter(function(x){return x.s===s});return r.length?r.reduce(function(a,x){return a+x.v},0)/r.length:null}
+function charts(p,ser,band){
+  if(p.s)return chart(p,ser,band);
+  var vs=[];ser.forEach(function(s){[s.means,s.mAM,s.mPM].forEach(function(a){a.forEach(function(m){if(m!=null)vs.push(m)})})});
+  if(band)vs.push(band.min,band.max);
+  var dom=vs.length?[Math.min.apply(null,vs),Math.max.apply(null,vs)]:null;
+  var sv=function(k){return ser.map(function(s){return{t:s.t,rg:s.rg,col:s.col,dash:s.dash,means:s[k]}})};
+  return '<div class="charts"><div><p class="ctitle">Daily mean (AM and PM)</p>'+chart(p,sv('means'),band,dom)+'</div><div><p class="ctitle">AM readings</p>'+chart(p,sv('mAM'),band,dom)+'</div><div><p class="ctitle">PM readings</p>'+chart(p,sv('mPM'),band,dom)+'</div></div>';
+}
+var MON3={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+function okDate(y,m,d){var dt=new Date(Date.UTC(y,m-1,d));return dt.getUTCFullYear()===y&&dt.getUTCMonth()===m-1&&dt.getUTCDate()===d?y+'-'+p2(m)+'-'+p2(d):''}
+function parseDate(s){
+  s=String(s||'').trim();var m,y;
+  if(/^\d{5}(\.\d+)?$/.test(s)){var n=Math.floor(+s);if(n>30000&&n<80000){var dt=new Date(Date.UTC(1899,11,30)+n*864e5);return okDate(dt.getUTCFullYear(),dt.getUTCMonth()+1,dt.getUTCDate())}}
+  if((m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})(?:[ T].*)?$/)))return okDate(+m[1],+m[2],+m[3]);
+  if((m=s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2}|\d{4})$/))){y=+m[3];if(y<100)y+=2000;var a=+m[1],b=+m[2];return a>12?okDate(y,b,a):okDate(y,a,b)}
+  if((m=s.match(/^(\d{1,2})[\s\-\/]([A-Za-z]{3})[A-Za-z]*\.?[\s\-\/,]*(\d{2}|\d{4})$/))&&MON3[m[2].toLowerCase()]){y=+m[3];if(y<100)y+=2000;return okDate(y,MON3[m[2].toLowerCase()],+m[1])}
+  if((m=s.match(/^([A-Za-z]{3})[A-Za-z]*\.?\s+(\d{1,2})[,.]?\s+(\d{2}|\d{4})$/))&&MON3[m[1].toLowerCase()]){y=+m[3];if(y<100)y+=2000;return okDate(y,MON3[m[1].toLowerCase()],+m[2])}
+  return '';
+}
+function isTemplate(txt){
+  var l=txt.replace(/^\ufeff/,'').split('\n').filter(function(x){return x.replace(/\t/g,'').trim()})[0]||'';
+  var h=l.split('\t').map(function(x){return x.trim().toLowerCase()});
+  return h.indexOf('date')>-1&&h.indexOf('tank')>-1;
+}
+function normTank(s){var m=String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').match(/^T([1-4])R([1-3])$/);return m?{t:+m[1],r:+m[2]}:null}
+function importTemplate(txt){
+  var lines=txt.replace(/^\ufeff/,'').split('\n').filter(function(l){return l.replace(/\t/g,'').trim()});
+  var H=lines[0].split('\t').map(function(x){return x.trim().toLowerCase().replace(/[\s\-]+/g,'_')}),ix=function(k){return H.indexOf(k)};
+  var HR=['8am','9am','10am','11am','12nn','1pm','2pm','3pm','4pm','5pm'];
+  var cols={temp:HR.map(function(h){return ix('temp_'+h)}),do:[ix('do_am'),ix('do_pm')],sal:[ix('salinity_am'),ix('salinity_pm')],ph:[ix('ph_am'),ix('ph_pm')]};
+  var iD=ix('date'),iT=ix('tank'),iA=ix('alive'),iI=ix('initial'),iR=ix('remarks'),anyCol=false;
+  Object.keys(cols).forEach(function(k){cols[k].forEach(function(j){if(j>-1)anyCol=true})});
+  if(iD<0||iT<0||!anyCol){pmsg('The file needs the template headers (Date, Tank, Temp_8AM to Temp_5PM, DO_AM, DO_PM, Salinity_AM, Salinity_PM, pH_AM, pH_PM). Download the CSV template and keep its first row.',1);return}
+  var n=0,empty=0,dn=0,ds={},dup={},seen={},batch=[],lastDate='',badDate={},badTank={},perTr={c:0,t1:0,t2:0,t3:0},initCh=false,maxD='';
+  lines.slice(1).forEach(function(line){
+    var c=line.split('\t').map(function(x){return x.trim()}),raw0=c[iT]||'',tk=normTank(raw0);
+    if(!tk){if(raw0)badTank[raw0]=1;else if(c.some(function(x,i){return i>1&&x!==''}))badTank['(blank)']=1;return}
+    var dtxt=c[iD]||'',pd=dtxt?parseDate(dtxt):'';
+    if(pd)lastDate=pd;
+    var raw={},sl={},vals={},any=false,surv=null;
+    Object.keys(cols).forEach(function(k){var r=[],s=[];cols[k].forEach(function(j,slot){if(j<0)return;var v=c[j];if(v!==undefined&&v!==''&&isFinite(Number(v))){r.push(Number(v));s.push(slot)}});if(r.length){raw[k]=r;sl[k]=s;vals[k]=r.reduce(function(a,b){return a+b},0)/r.length;any=true}});
+    var al=iA>-1?c[iA]:'',ini=iI>-1?parseFloat(c[iI]):NaN;
+    if(al!==''&&al!==undefined&&isFinite(Number(al))&&ini>0&&Number(al)<=ini){vals.surv=Number(al)/ini*100;surv={alive:Number(al),init:ini};any=true}
+    if(!any){empty++;return}
+    var date=pd||(dtxt?'':lastDate);
+    if(!date){badDate[dtxt||'(blank)']=1;return}
+    var tid=TR[tk.t-1].id,rep=tk.r,key=date+'|'+tid+'|'+rep;
+    if(seen[key]){dn++;dup[date]=1;return}
+    seen[key]=1;
+    batch.push({id:Date.now()+''+n+Math.floor(Math.random()*1000),date:date,time:'',tr:tid,rep:rep,vals:vals,raw:raw,sl:sl,surv:surv,note:iR>-1?(c[iR]||''):''});
+    if(ini>0&&inits[tid+'-'+rep]!==ini){inits[tid+'-'+rep]=ini;initCh=true}
+    n++;perTr[tid]++;ds[date]=1;if(date>maxD)maxD=date;
+  });
+  var nd=Object.keys(ds).length,bd=Object.keys(badDate),bt=Object.keys(badTank),prob=bd.length||bt.length||dn;
+  var det=(empty?' '+empty+' row'+(empty>1?'s':'')+' had no readings and '+(empty>1?'were':'was')+' skipped.':'')+(bd.length?' Date not recognised: '+bd.slice(0,3).join(', ')+(bd.length>3?'...':'')+' (use YYYY-MM-DD).':'')+(bt.length?' Tank not recognised: '+bt.slice(0,3).join(', ')+(bt.length>3?'...':'')+' (use T1R1 to T4R3).':'')+(dn?' '+dn+' row'+(dn>1?'s':'')+' repeated a tank and date ('+Object.keys(dup).join(', ')+') and '+(dn>1?'were':'was')+' skipped.':'');
+  if(!n){pmsg('Nothing was imported.'+det,1);return}
+  putEntries(batch,true);if(initCh)saveSettings();ws=monday(parse(maxD));$('paste').value='';
+  pmsg('Imported '+n+' tank-day'+(n>1?'s':'')+' across '+nd+' date'+(nd>1?'s':'')+' (T1: '+perTr.c+', T2: '+perTr.t1+', T3: '+perTr.t2+', T4: '+perTr.t3+').'+det,!!prob);render();
+}
+$('tpl').onclick=function(){
+  var H=['Date','Tank','Temp_8AM','Temp_9AM','Temp_10AM','Temp_11AM','Temp_12NN','Temp_1PM','Temp_2PM','Temp_3PM','Temp_4PM','Temp_5PM','DO_AM','DO_PM','Salinity_AM','Salinity_PM','pH_AM','pH_PM','Alive','Initial','Remarks'],rows=[H.join(',')],t,r;
+  for(t=1;t<=4;t++)for(r=1;r<=3;r++)rows.push(['','T'+t+'R'+r].concat(new Array(H.length-2).join(',').split(',')).join(','));
+  dl('water-quality-template.csv','text/csv',rows.join('\r\n'));
+};
+$('doimp').onclick=function(){runImport($('paste').value,'pmsg')};
+var MONF=['January','February','March','April','May','June','July','August','September','October','November','December'],wbk=null;
+function imsg(t,bad){var m=$('imsg');m.textContent=t;m.className=bad?'err':'msg'}
+function cellText(c){
+  if(!c||c.v==null)return '';
+  if(c.t==='d'){var d=new Date(c.v.getTime()+43200000);return d.getFullYear()<1950?'':MONF[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear()}
+  return String(c.v).replace(/[\t\r\n]+/g,' ').trim();
+}
+function sheetText(ws){
+  if(!ws['!ref'])return '';
+  var ref=XLSX.utils.decode_range(ws['!ref']),out=[],r,c,row,last=Math.min(ref.e.c,ref.s.c+30);
+  for(r=ref.s.r;r<=ref.e.r;r++){row=[];for(c=ref.s.c;c<=last;c++)row.push(cellText(ws[XLSX.utils.encode_cell({r:r,c:c})]));out.push(row.join('\t'))}
+  return out.join('\n');
+}
+function countTanks(txt){var n=0;txt.split('\n').forEach(function(l){var c=l.split('\t');for(var i=0;i<Math.min(c.length,4);i++){if(/^T[1-4]R[1-3]$/i.test(c[i])){n++;break}}});return n}
+function parseCSV(t){
+  var rows=[],row=[],f='',q=false,i,ch;
+  for(i=0;i<t.length;i++){ch=t[i];
+    if(q){if(ch==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=ch}
+    else if(ch==='"')q=true;
+    else if(ch===','||ch==='\t'){row.push(f.trim());f=''}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&t[i+1]==='\n')i++;row.push(f.trim());rows.push(row.join('\t'));row=[];f=''}
+    else f+=ch}
+  row.push(f.trim());rows.push(row.join('\t'));
+  return rows.join('\n');
+}
+function showSheets(){
+  var names=wbk.csv!==undefined?['This file']:wbk.xl.SheetNames,best=null,bn=0,opts='';
+  wbk.t={};
+  names.forEach(function(nm){var tx=wbk.csv!==undefined?wbk.csv:sheetText(wbk.xl.Sheets[nm]);wbk.t[nm]=tx;var k=countTanks(tx);if(k>bn){bn=k;best=nm}opts+='<option value="'+esc(nm)+'">'+esc(nm)+' ('+k+' tank rows)</option>'});
+  $('shsel').innerHTML=opts;if(best)$('shsel').value=best;
+  $('shrow').hidden=false;
+  imsg(bn?'Pick the sheet to import. The one with the most tank rows is selected.':'No tank rows (T1R1 to T4R3) were found in this file. Check that you chose the right file.',!bn);
+}
+$('ifile').addEventListener('change',function(){
+  var f=this.files[0],inp=this;if(!f)return;wbk=null;$('shrow').hidden=true;imsg('');
+  var nm=f.name.toLowerCase(),rd=new FileReader();
+  if(/\.(csv|tsv|txt)$/.test(nm)){
+    rd.onload=function(){wbk={csv:parseCSV(String(rd.result))};showSheets()};rd.readAsText(f);
+  }else{
+    if(typeof XLSX==='undefined'){imsg('The Excel reader could not load (it needs an internet connection). Save the sheet as .csv and choose that file instead.',1);inp.value='';return}
+    rd.onload=function(){try{wbk={xl:XLSX.read(rd.result,{type:'array',cellDates:true})};showSheets()}catch(e){imsg('Could not read that file. Try saving it as .xlsx or .csv.',1)}};rd.readAsArrayBuffer(f);
+  }
+  inp.value='';
+});
+$('goimp').onclick=function(){if(!wbk||!wbk.t)return;runImport(wbk.t[$('shsel').value]||'','imsg')};
+var dlNS=null,canWrite=true,rows={},outbox={},me=load('wq-me',null),sb=null,session=null,lastSync=null,lastOk=null,syncing=false,syncTimer=null,lastErr='',dbp=null,cfgOk=false;
+function idbOpen(){return dbp||(dbp=new Promise(function(res,rej){var r=indexedDB.open('wq-log',1);r.onupgradeneeded=function(){r.result.createObjectStore('kv')};r.onsuccess=function(){res(r.result)};r.onerror=function(){rej(r.error)}}))}
+function idbGet(k){return idbOpen().then(function(d){return new Promise(function(res,rej){var q=d.transaction('kv').objectStore('kv').get(k);q.onsuccess=function(){res(q.result)};q.onerror=function(){rej(q.error)}})})}
+function idbSet(k,v){return idbOpen().then(function(d){return new Promise(function(res,rej){var t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=function(){res()};t.onerror=function(){rej(t.error)}})})}
+function syncMsg(t,bad){var m=$('syncmsg');m.textContent=t;m.className=bad?'err':'note'}
+function persist(){return Promise.all([idbSet('rows',rows),idbSet('outbox',outbox)]).catch(function(){syncMsg('This browser could not save data on the device. Download a backup often.',1)})}
+function rebuild(){entries=Object.keys(rows).map(function(k){return rows[k]}).filter(function(e){return !e.deleted})}
+function commit(){rebuild();persist();ui();scheduleSync()}
+function putEntries(list,replace){
+  if(replace){var keys={};list.forEach(function(e){keys[e.date+'|'+trOf(e)+'|'+e.rep]=1});Object.keys(rows).forEach(function(k){var r=rows[k];if(!r.deleted&&keys[r.date+'|'+trOf(r)+'|'+r.rep]){r.deleted=true;outbox[r.id]=1}})}
+  list.forEach(function(e){if(!e.by&&me)e.by=me.email;e.deleted=false;rows[e.id]=e;outbox[e.id]=1});
+  commit();
+}
+function removeEntry(id){if(rows[id]){rows[id].deleted=true;outbox[id]=1;commit()}render()}
+function saveSettings(){save('wq-ranges',ranges);save('wq-tt',tt);save('wq-init',inits);save('wq-set-dirty',1);scheduleSync();ui()}
+function applySettings(o){
+  ranges=o.ranges||{};tt=o.tt||{};inits=o.inits||{};
+  P.forEach(function(p){var r=ranges[p.k];if(!p.s&&r&&isFinite(r.min)&&isFinite(r.max)){p.min=r.min;p.max=r.max;var a=$('mn-'+p.k),b=$('mx-'+p.k);if(a)a.value=r.min;if(b)b.value=r.max}});
+  TR.forEach(function(t){var r=tt[t.id];if(r&&isFinite(r.min)&&isFinite(r.max)){t.tmin=r.min;t.tmax=r.max;var a=$('tm-'+t.id),b=$('tx-'+t.id);if(a)a.value=r.min;if(b)b.value=r.max}});
+}
+function fillNames(){}
+function toRow(e){return{id:e.id,date:e.date,time:e.time||'',tr:trOf(e),rep:e.rep,sess:e.sess||null,vals:e.vals||{},raw:e.raw||{},sl:e.sl||{},surv:e.surv||null,note:e.note||'',deleted:!!e.deleted}}
+function fromRow(r){return{id:r.id,date:r.date,time:r.time||'',tr:r.tr,rep:r.rep,sess:r.sess||undefined,vals:r.vals||{},raw:r.raw||{},sl:r.sl||{},surv:r.surv||null,note:r.note||'',by:r.by_email||'',deleted:!!r.deleted}}
+function scheduleSync(){clearTimeout(syncTimer);syncTimer=setTimeout(sync,1500)}
+function ui(){
+  var n=Object.keys(outbox).length+Object.keys(zoutbox).length,w=n+' record'+(n===1?'':'s');
+  if(!cfgOk){syncMsg('Cloud sync is not set up yet. Open config.js and paste your Supabase project URL and anon key. Until then everything is saved on this device only.',1);$('login').hidden=true;$('syncrow').hidden=true;return}
+  $('login').hidden=!!session;$('syncrow').hidden=!session;
+  var who=session&&session.user?session.user.email:(me&&me.email)||'';
+  if(!session)syncMsg('Not signed in. Readings are saved on this device ('+w+' waiting to upload). Sign in to upload them and to see your co-worker\'s readings.');
+  else if(!navigator.onLine)syncMsg('Offline. '+w+' waiting to upload; they upload automatically when you are back online.');
+  else if(syncing)syncMsg('Syncing…');
+  else if(lastErr)syncMsg('Could not sync: '+lastErr+' ('+w+' waiting to upload.) It will try again automatically.',1);
+  else syncMsg('Signed in as '+who+'. '+(n?w+' waiting to upload.':'All readings are uploaded.')+(lastOk?' Last sync '+lastOk.toLocaleTimeString()+'.':''));
+}
+async function sync(){
+  if(syncing||!sb||!session||!navigator.onLine){ui();return}
+  syncing=true;lastErr='';ui();
+  try{
+    var ids=Object.keys(outbox),i,part,r;
+    for(i=0;i<ids.length;i+=200){
+      part=ids.slice(i,i+200);
+      r=await sb.from('readings').upsert(part.map(function(id){return toRow(rows[id])}),{onConflict:'id'});
+      if(r.error)throw r.error;
+      part.forEach(function(id){delete outbox[id]});
+      await idbSet('outbox',outbox);
+    }
+    if(load('wq-set-dirty',0)){
+      var rs=await sb.from('app_settings').upsert({id:'main',data:{ranges:ranges,tt:tt,inits:inits}},{onConflict:'id'}).select('updated_at');
+      if(rs.error)throw rs.error;
+      save('wq-set-dirty',0);save('wq-set-remote',rs.data&&rs.data[0]?rs.data[0].updated_at:'');
+    }else{
+      var g=await sb.from('app_settings').select('data,updated_at').eq('id','main').maybeSingle();
+      if(g.error)throw g.error;
+      if(g.data&&g.data.updated_at!==load('wq-set-remote','')){applySettings(g.data.data||{});save('wq-ranges',ranges);save('wq-tt',tt);save('wq-init',inits);save('wq-set-remote',g.data.updated_at)}
+    }
+    var cursor=lastSync||'1970-01-01T00:00:00+00:00',maxTs=lastSync,guard=0,q,prev;
+    while(guard++<500){
+      q=await sb.from('readings').select('*').gte('updated_at',cursor).order('updated_at',{ascending:true}).order('id',{ascending:true}).limit(1000);
+      if(q.error)throw q.error;
+      q.data.forEach(function(row){
+        if(!maxTs||row.updated_at>maxTs)maxTs=row.updated_at;
+        if(outbox[row.id])return;
+        rows[row.id]=fromRow(row);
+      });
+      if(q.data.length<1000)break;
+      prev=cursor;cursor=q.data[q.data.length-1].updated_at;
+      if(cursor===prev)break;
+    }
+    await syncZoea();
+    lastSync=maxTs;lastOk=new Date();
+    await idbSet('lastSync',lastSync);
+    rebuild();await persist();if(!jumpedOnce)startWeek();render();
+  }catch(e){lastErr=(e&&e.message)||String(e)}
+  syncing=false;ui();
+  if(!lastErr&&(Object.keys(outbox).length||Object.keys(zoutbox).length))scheduleSync();
+}
+async function initApp(){
+  try{rows=(await idbGet('rows'))||{};outbox=(await idbGet('outbox'))||{};lastSync=(await idbGet('lastSync'))||null;zrows=(await idbGet('zrows'))||{};zoutbox=(await idbGet('zoutbox'))||{};zLast=(await idbGet('zLast'))||null}catch(e){syncMsg('This browser cannot store data on the device, so nothing will be kept after you close the app.',1)}
+  rebuild();startWeek();zLoadDay();render();
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+  var c=window.WQ_CONFIG;
+  cfgOk=!!(window.supabase&&c&&c.url&&c.anonKey&&!/YOUR[-_]/i.test(c.url+c.anonKey));
+  if(cfgOk){try{sb=window.supabase.createClient(c.url,c.anonKey,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'wq-auth'}})}catch(e){sb=null;cfgOk=false}}
+  ui();
+  if(!sb)return;
+  try{var r=await sb.auth.getSession();session=r.data.session;if(session&&session.user){me={email:session.user.email};save('wq-me',me)}}catch(e){}
+  sb.auth.onAuthStateChange(function(ev,s){session=s;if(s&&s.user){me={email:s.user.email};save('wq-me',me)}ui();if(s)sync()});
+  ui();sync();
+  window.addEventListener('online',function(){ui();sync()});
+  window.addEventListener('offline',ui);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)sync()});
+  setInterval(sync,60000);
+}
+$('login').addEventListener('submit',async function(ev){
+  ev.preventDefault();if(!sb)return;syncMsg('Signing in…');
+  try{
+    var r=await sb.auth.signInWithPassword({email:$('lemail').value.trim(),password:$('lpass').value});
+    if(r.error){syncMsg(r.error.message,1);return}
+    session=r.data.session;me={email:r.data.user.email};save('wq-me',me);$('lpass').value='';ui();sync();
+  }catch(e){syncMsg('Could not reach the server. Check your connection and try again.',1)}
+});
+$('syncnow').onclick=function(){sync()};
+$('signout').onclick=async function(){try{await sb.auth.signOut()}catch(e){}session=null;ui()};
+function allDates(){return entries.map(function(e){return e.date}).concat(zList().map(function(r){return r.date})).sort()}
+function dataStat(){
+  var el=$('dstat');if(!el)return;
+  var zc=zCount();
+  if(!entries.length&&!zc){el.textContent='No readings saved on this device yet.';return}
+  var ds=allDates();
+  el.textContent='Saved on this device: '+entries.length+' readings'+(zc?' and '+zc+' zoea records':'')+' from '+ds[0]+' to '+ds[ds.length-1]+'. Use Prev, Next, Latest data or Go to date to move between weeks.';
+}
+function latestDate(){var t=ymd(new Date()),ds=allDates(),p=ds.filter(function(d){return d<=t});return p.length?p[p.length-1]:(ds[0]||'')}
+function jumpLatest(){var d=latestDate();if(d){ws=monday(parse(d));render()}}
+var jumpedOnce=false;
+function startWeek(){
+  var ds=allDates();if(!ds.length)return;
+  jumpedOnce=true;
+  var a=ymd(ws),b=new Date(ws);b.setDate(b.getDate()+6);var e2=ymd(b);
+  if(!ds.some(function(d){return d>=a&&d<=e2}))jumpLatest();
+}
+$('latest').onclick=jumpLatest;
+$('gotod').addEventListener('change',function(){if(this.value){ws=monday(parse(this.value));render()}});
+var REFS=[
+ 'Ikhwanuddin M, Hayimad T, Ghazali A, Abdul Halim SS, Abdullah SA (2016). Resistance test at early larval stage of blue swimming crab, Portunus pelagicus. Songklanakarin Journal of Science and Technology 38(1): 83-90. (Zoeae: best survival at 30 \u00b0C and 30 ppt, pH 8.0-8.2; no survival at 0, 10 or 50 ppt; ammonia of 2 ppm or more lethal within 24 h; no survival beyond 6 h without aeration.)',
+ 'Ikhwanuddin M, Azra MN, Talpur MAD, Abol-Munafi AB, Shabdin ML (2012). Optimal water temperature and salinity for production of blue swimming crab, Portunus pelagicus, 1st day juvenile crab. AACL Bioflux 5(1). (30 \u00b0C and 30 ppt recommended; larvae at 24-28 \u00b0C or 20 ppt did not reach crab stage 1; zoea 1 to megalopa in 13-14 days.)',
+ 'Cabacaba NS (2014 workshop). Seed production of the blue swimming crab (Portunus pelagicus). In: Proceedings of the International Workshop on Resource Enhancement and Sustainable Aquaculture Practices in Southeast Asia (RESA 2014). SEAFDEC Aquaculture Department, Tigbauan, Iloilo, Philippines. (Guiuan Marine Fisheries Development Center: 28-30 \u00b0C, 32-34 ppt, zoea 1 to megalopa in 10-12 days, longer development below 26 \u00b0C, zoea 1 to megalopa survival of 4.0-7.5%, cannibalism and deteriorating water quality as main causes of mortality, 30-50% daily water exchange.)',
+ 'Romano N, Zeng C (2006). The effects of salinity on the survival, growth and haemolymph osmolality of early juvenile blue swimmer crabs, Portunus pelagicus. Aquaculture. (20-35 ppt suitable for early juveniles; 5 ppt caused complete mortality.)',
+ 'Azra MN, Chen J-C, Hsu T-H, Ikhwanuddin M, Abol-Munafi AB (2019). Growth, molting duration and carapace hardness of blue swimming crab, Portunus pelagicus, instars at different water temperatures. (Instar survival decreased at 32 \u00b0C compared with 24 and 28 \u00b0C.)',
+ 'Juwana S, Aswandy I, Pangabean MGL. Larval development of the Indonesian blue swimming crab, Portunus pelagicus (L), reared in the laboratory. Marine Research in Indonesia 26. (Rearing at 25-30 \u00b0C with dissolved oxygen of 5.3-7.2 ppm; 277 megalopae obtained from 137,870 larvae.)',
+ 'Andres M, Rotllant G, Zeng C (2010). Survival, development and growth of larvae of the blue swimmer crab, Portunus pelagicus, cultured under different photoperiod conditions. Aquaculture 300: 218-222. (At 29 \u00b1 1 \u00b0C, zoea 1 to megalopa took 8.5-10.8 days.)',
+ 'Bryars SR, Havenhand JN (2006). Effects of constant and varying temperatures on the development of blue swimmer crab (Portunus pelagicus) larvae: laboratory observations and field predictions for temperate coastal waters. Journal of Experimental Marine Biology and Ecology 329: 218-229. (Temperature governs larval development rate.)',
+ 'The effects of different water flow rates on the survival rate of blue crab (Portunus pelagicus) zoea IV to megalopa stages. Journal of Coastal Development, Diponegoro University. (Reports 4-6 mg/L dissolved oxygen as needed for larval development.)',
+ 'Ravi R, Manisseri MK (2013). The effect of different pH and photoperiod regimens on the survival rate and developmental period of the larvae of Portunus pelagicus. Iranian Journal of Fisheries Sciences 12(2): 490-499. (pH extremes and sudden pH changes stress crustacean larvae.)',
+ 'Nguyen Thanh Phuong et al. Effects of temperature on the growth and survival of mud crab (Scylla paramamosain) larvae. Can Tho University Journal of Science. (Related species: zoea 3 and 4 died at 33 \u00b0C or above; best survival at 27 \u00b0C.)',
+ 'Nurdiani R, Zeng C (2007). Effects of temperature and salinity on the survival and development of mud crab, Scylla serrata (Forsskal), larvae. Aquaculture Research. (Related species: 25-30 \u00b0C gives reasonable survival, 28-30 \u00b0C shortens the culture cycle.)'
+];
+var SH={c:'T1 (control)',t1:'T2 (30 \u00b0C)',t2:'T3 (32 \u00b0C)',t3:'T4 (26 \u00b0C)'};
+var lastNarr='';
+function cite(){return ' ['+[].slice.call(arguments).join(', ')+']'}
+function joinL(a){return a.length<2?(a[0]||''):a.length===2?a[0]+' and '+a[1]:a.slice(0,-1).join(', ')+', and '+a[a.length-1]}
+function pv(k,v){var p=P.filter(function(x){return x.k===k})[0];return String(fx(p,v))}
+function spread(arr){var v=arr.map(function(x){return x.av});return Math.max.apply(null,v)-Math.min.apply(null,v)}
+function narrParas(S,nE,nD){
+  var wk=$('weeklbl').textContent,all=(view==='all'),trs={};
+  Object.keys(S).forEach(function(k){S[k].forEach(function(x){trs[x.id]=1})});
+  var nT=Object.keys(trs).length;
+  if(!nE&&!ZS.n){return [[
+    'No readings were recorded for '+wk+', so the water conditions for the zoeae could not be assessed this week.',
+    'Published rearing of blue swimming crab zoeae generally uses about 28\u201330 \u00b0C'+cite(1,2,3)+' and a salinity of 30\u201335 ppt'+cite(1,2,3)+'.',
+    'The best zoeal survival has been reported at a pH of 8.0\u20138.2'+cite(1)+', and larvae need dissolved oxygen of roughly 4\u20136 mg/L or more'+cite(6,9)+'.',
+    'Longer larval development has been reported below 26 \u00b0C'+cite(3)+', while juvenile survival declined at 32 \u00b0C'+cite(5)+'.',
+    'Enter or import readings for this week and the report will compare each treatment with these published ranges and explain what the results mean for the zoeae and the stock.'
+  ]]}
+  var cmap={},corder=[],effects={},pa=[],p1=[],p2=[],p3=[],p4=[],p5=[];
+  function addC(k,id){if(!cmap[k]){cmap[k]=[];corder.push(k)}if(cmap[k].indexOf(id)<0)cmap[k].push(id)}
+  p1.push(nE?'For '+wk+', '+nE+' record'+(nE===1?'':'s')+' from '+(all?nT+' of 4 treatments':SH[view])+' on '+nD+' of 7 days '+(nE===1?'was':'were')+' compared with published ranges for blue swimming crab (Portunus pelagicus) larval rearing.':'No water quality readings were recorded for '+wk+', so this interpretation relies on the zoea monitoring records.');
+  // temperature
+  var T=S.temp||[];
+  if(!T.length){p1.push('No temperature readings were recorded this week, so thermal conditions for the zoeae could not be assessed.')}
+  else{
+    var by={low:[],below:[],opt:[],above:[],high:[]};
+    T.forEach(function(x){var v=x.av,c=v<26?'low':v<28?'below':v<=30.5?'opt':v<31.5?'above':'high';by[c].push(SH[x.id]+' at '+pv('temp',v)+' \u00b0C');if(c==='high'||c==='above')effects.th=1;if(c==='low'||c==='below')effects.slow=1;if(c!=='opt')addC('temperature',x.id)});
+    if(by.opt.length)p1.push('Mean temperature in '+joinL(by.opt)+' was within the 28\u201330 \u00b0C range used for larval rearing at the Guiuan hatchery and found best for zoeae'+cite(1,2,3)+'.');
+    if(by.below.length)p1.push('Mean temperature in '+joinL(by.below)+' was just below the 28\u201330 \u00b0C hatchery range'+cite(3)+', so development is likely to be somewhat slower than at 30 \u00b0C.');
+    if(by.low.length)p1.push('Mean temperature in '+joinL(by.low)+' was below 26 \u00b0C, where longer larval development has been reported'+cite(3)+'.');
+    if(by.above.length)p1.push('Mean temperature in '+joinL(by.above)+' was above the 28\u201330 \u00b0C range, while zoeal survival in published trials was best at 30 \u00b0C'+cite(1,2)+', so survival may be lower.');
+    if(by.high.length)p1.push('Mean temperature in '+joinL(by.high)+' was at or above 32 \u00b0C, higher than the larval rearing ranges in the reviewed literature; juvenile P. pelagicus survived less well at 32 \u00b0C'+cite(5)+' and related mud crab zoeae died at 33 \u00b0C or above'+cite(11)+', so this should be treated as thermal stress, whereas 25\u201330 \u00b0C gave reasonable survival in related species'+cite(12)+'.');
+    var sw=[];T.forEach(function(x){if(x.aAM!=null&&x.aPM!=null&&Math.abs(x.aPM-x.aAM)>=1.5)sw.push(SH[x.id]+' ('+(x.aPM>x.aAM?'+':'-')+pv('temp',Math.abs(x.aPM-x.aAM))+' \u00b0C)')});
+    if(sw.length)p1.push('The PM mean differed from the AM mean by 1.5 \u00b0C or more in '+joinL(sw)+', a daily swing that adds stress, so heater and chiller stability should be checked.');
+    if(by.opt.length||by.above.length||by.below.length)p1.push('At temperatures near this range, published rearing has taken roughly 8.5 to 14 days from zoea 1 to megalopa'+cite(2,3,7)+', and temperature is the main driver of development rate'+cite(8)+'.');
+  }
+  // salinity
+  var SA=S.sal||[];
+  if(!SA.length){p2.push('No salinity readings were recorded this week.')}
+  else{
+    var sb={opt:[],low:[],vlow:[],high:[],vhigh:[]};
+    SA.forEach(function(x){var v=x.av,c=(v>=30&&v<=35)?'opt':(v>=25&&v<30)?'low':(v>35&&v<=40)?'high':v<25?'vlow':'vhigh';sb[c].push(SH[x.id]+' at '+pv('sal',v)+' ppt');if(c!=='opt'){addC('salinity',x.id);effects.osm=1}});
+    if(sb.opt.length)p2.push('Mean salinity in '+joinL(sb.opt)+' was within the 30\u201335 ppt range that gave the best zoeal survival'+cite(1,2)+' and overlaps the 32\u201334 ppt used at Guiuan'+cite(3)+'; early juveniles also do well at 20\u201335 ppt'+cite(4)+'.');
+    if(sb.low.length)p2.push('Mean salinity in '+joinL(sb.low)+' was below 30 ppt, where published survival was highest'+cite(1,2)+'.');
+    if(sb.high.length)p2.push('Mean salinity in '+joinL(sb.high)+' was above 35 ppt, a range with little larval data, so evaporation or salt build-up should be checked.');
+    if(sb.vlow.length)p2.push('Mean salinity in '+joinL(sb.vlow)+' was approaching the low-salinity range where larval mortality has been reported (no zoeal survival at 10 ppt'+cite(1)+'; no larvae reached crab stage 1 at 20 ppt'+cite(2)+').');
+    if(sb.vhigh.length)p2.push('Mean salinity in '+joinL(sb.vhigh)+' was approaching the 50 ppt level at which no zoeae survived'+cite(1)+'.');
+  }
+  // pH
+  var PH=S.ph||[];
+  if(!PH.length){p2.push('No pH readings were recorded this week.')}
+  else{
+    var pb={opt:[],near:[],far:[]};
+    PH.forEach(function(x){var v=x.av,c=(v>=8.0&&v<=8.2)?'opt':(v>=7.8&&v<=8.4)?'near':'far';pb[c].push(SH[x.id]+' at '+pv('ph',v));if(c!=='opt'){addC('pH',x.id);effects.ph=1}});
+    if(pb.opt.length)p2.push('Mean pH in '+joinL(pb.opt)+' was within the 8.0\u20138.2 band reported as suitable for zoeae'+cite(1)+'.');
+    if(pb.near.length)p2.push('Mean pH in '+joinL(pb.near)+' was within normal seawater limits but outside the 8.0\u20138.2 band where zoeal survival was highest'+cite(1)+'.');
+    if(pb.far.length)p2.push('Mean pH in '+joinL(pb.far)+' was outside 7.8\u20138.4; survival away from pH 8.0\u20138.2 was very low in published tests'+cite(1)+' and extreme or sudden pH changes stress larvae'+cite(10)+'.');
+    var pw=[];PH.forEach(function(x){if(x.aAM!=null&&x.aPM!=null&&Math.abs(x.aPM-x.aAM)>=0.2)pw.push(SH[x.id])});
+    if(pw.length)p2.push('pH moved by 0.2 or more between the AM and PM readings in '+joinL(pw)+', and sudden pH fluctuations are known to stress crustacean larvae'+cite(10)+'.');
+  }
+  // dissolved oxygen
+  var DO=S.do||[];
+  if(!DO.length){p2.push('No dissolved oxygen readings were recorded this week.')}
+  else{
+    var ob={ok:[],low:[],poor:[],crit:[]};
+    DO.forEach(function(x){var v=x.av,c=v>=5?'ok':v>=4?'low':v>=2?'poor':'crit';ob[c].push(SH[x.id]+' at '+pv('do',v)+' mg/L');if(c!=='ok'){addC('dissolved oxygen',x.id);effects.ox=1}});
+    if(ob.ok.length)p2.push('Mean dissolved oxygen in '+joinL(ob.ok)+' was at or above 5 mg/L, in line with the 5.3\u20137.2 mg/L recorded in a rearing trial'+cite(6)+' and the 4\u20136 mg/L reported as needed by larvae'+cite(9)+'.');
+    if(ob.low.length)p2.push('Mean dissolved oxygen in '+joinL(ob.low)+' was in the lower part of the 4\u20136 mg/L range reported as needed'+cite(9)+', leaving little safety margin.');
+    if(ob.poor.length)p2.push('Mean dissolved oxygen in '+joinL(ob.poor)+' was below the 4\u20136 mg/L range reported as needed for larval development'+cite(9)+', so aeration and stocking density should be reviewed.');
+    if(ob.crit.length)p2.push('Mean dissolved oxygen in '+joinL(ob.crit)+' was critically low; zoeae did not survive beyond 6 hours at 0.65 mg/L in a stress test'+cite(1)+'.');
+    var dw=[];DO.forEach(function(x){if(x.aAM!=null&&x.aPM!=null&&x.aAM-x.aPM>=0.5)dw.push(SH[x.id])});
+    if(dw.length)p2.push('Oxygen was at least 0.5 mg/L lower in the PM readings in '+joinL(dw)+', which fits rising oxygen demand through the day and warmer, saltier water holding less oxygen.');
+  }
+  // survival
+  var SV=S.surv||[];
+  if(!SV.length){p3.push('No survival counts were entered this week, so the effect on the stock can only be inferred from water quality; entering alive and initial counts lets the report compare survival with published benchmarks.')}
+  else{
+    var sl=SV.map(function(x){var m=x.means.filter(function(v){return v!=null}),last=m.length?m[m.length-1]:x.av;return{id:x.id,v:last}});
+    sl.sort(function(a,b){return b.v-a.v});
+    p3.push('Recorded survival ended the week at '+joinL(sl.map(function(x){return SH[x.id]+' '+Math.round(x.v*10)/10+'%'}))+'.');
+    p3.push('For context, published survival over the larval cycle is usually low, about 4\u20137.5% from zoea 1 to megalopa at Guiuan'+cite(3)+', 0.25% to the first crab stage in one trial'+cite(2)+', and 277 megalopae from 137,870 larvae in another'+cite(6)+'; compare like with like, because your counts may cover only part of the larval cycle.');
+    if(sl.length>1&&sl[0].v-sl[sl.length-1].v>=5)p3.push('Survival was highest in '+SH[sl[0].id]+' and lowest in '+SH[sl[sl.length-1].id]+', a gap of '+Math.round((sl[0].v-sl[sl.length-1].v)*10)/10+' percentage points that should be tested statistically across the three replicates before any conclusion is drawn.');
+  }
+  // overall
+  if(!corder.length){
+    p3.push('Overall, every measured parameter stayed within the ranges reported as suitable, so any survival differences are more likely to come from factors not measured here, such as feeding, stocking density, cannibalism or ammonia (2 ppm or more killed zoeae within 24 hours'+cite(1)+').');
+  }else{
+    var ef=[];if(effects.th)ef.push('thermal stress and lower survival');if(effects.slow)ef.push('a longer larval period');if(effects.osm)ef.push('osmotic stress');if(effects.ph)ef.push('acid\u2013base stress');if(effects.ox)ef.push('oxygen stress');
+    var cs=corder.map(function(k){var ids=cmap[k];return k+(ids.length===nT&&nT>1?' in all '+nT+' treatments':' in '+joinL(ids.map(function(i){return SH[i]})))});
+    p3.push('Overall, '+joinL(cs)+' departed from the published optima, which would be expected to cause '+joinL(ef)+' in the zoeae and so reduce the number of megalopae and crablets available for stock enhancement.');
+    p3.push('To protect the stock, confirm aeration, keep the daily 30\u201350% water exchange practised at Guiuan because deteriorating water quality and cannibalism are the main causes of mortality there'+cite(3)+', and correct any deviating parameter gradually, since sudden changes are themselves stressful'+cite(10)+'.');
+  }
+  // zoea stage monitoring
+  var Z=ZS.tr||{},zk=Object.keys(Z).filter(function(id){return Z[id].lsiLast!=null||Z[id].survLast!=null}),r2=function(v){return Math.round(v*100)/100};
+  if(zk.length){
+    var zd=zk.filter(function(id){return Z[id].dom}),stg=function(v){return r2(v)===1?'1 stage':r2(v)+' stages'};
+    p5.push(zd.length?'Zoea stage monitoring covered '+ZS.n+' tank-day'+(ZS.n===1?'':'s')+' this week, and at the latest sampling the dominant stage was '+joinL(zd.map(function(id){return SH[id]+' '+Z[id].dom+' ('+Math.round(Z[id].domPct)+'% of sampled zoeae'+(Z[id].doc!=null?', day '+Z[id].doc:'')+')'}))+'.':'Zoea monitoring this week contained counts but no stage observations, so larval development could not be assessed.');
+    var rt=zk.filter(function(id){return Z[id].slope!=null}).sort(function(a,b){return Z[b].slope-Z[a].slope});
+    var devTxt='; published rearing at about 28\u201330 \u00b0C took 8.5 to 14 days from zoea 1 to megalopa'+cite(2,3,7);
+    if(rt.length>1){
+      var top=rt[0],bot=rt[rt.length-1],tT=T.filter(function(x){return x.id===top})[0],tB=T.filter(function(x){return x.id===bot})[0];
+      var fol=(tT&&tB)?(tT.av>=tB.av):null;
+      p5.push('Larvae advanced about '+stg(Z[top].slope)+' per day in '+SH[top]+' compared with '+stg(Z[bot].slope)+' per day in '+SH[bot]+(fol===true?', as expected because temperature is the main driver of larval development rate'+cite(8):fol===false?', which does not follow the temperature order, so feeding, density or cannibalism may be affecting development':'')+devTxt+'.');
+    }else if(rt.length===1){p5.push('Larvae in '+SH[rt[0]]+' advanced about '+stg(Z[rt[0]].slope)+' per day'+devTxt+'.')}
+    else{p5.push('More than one sampling day is needed to estimate how fast the larvae are developing'+devTxt+'.')}
+    var zs=zk.filter(function(id){return Z[id].survLast!=null}).sort(function(a,b){return Z[b].survLast-Z[a].survLast});
+    if(zs.length){
+      p5.push('Survival estimated from the sub-sample counts ended the week at '+joinL(zs.map(function(id){return SH[id]+' '+(Math.round(Z[id].survLast*10)/10)+'%'}))+'; these are sampling estimates, so gaps of a few percentage points are within counting error, and published survival from zoea 1 to megalopa was about 4\u20137.5% at Guiuan'+cite(3)+'.');
+      if(rt.length>1&&zs.length>1&&rt[0]===zs[zs.length-1]&&Z[zs[0]].survLast-Z[rt[0]].survLast>=5)p5.push('The fastest-developing treatment also had the lowest estimated survival, a trade-off that fits thermal stress at the warm end of the tolerance range'+cite(5,11)+'.');
+      var colp=zs.filter(function(id){return Z[id].survLast<1});
+      if(colp.length)p5.push('Estimated survival below 1% in '+joinL(colp.map(function(id){return SH[id]}))+' points to a collapse of that group, so check water quality, feeding and cannibalism, which are the main causes of mortality in hatchery rearing'+cite(3)+'.');
+    }else{p5.push('No usable counts were entered, so survival could not be estimated from the monitoring sheet.')}
+  }
+  // comparison across treatments
+  if(all&&T.length>1){
+    var hi=T.slice().sort(function(a,b){return b.av-a.av}),dT=hi[0].av-hi[hi.length-1].av,cf=[];
+    if(SA.length>1&&spread(SA)>2)cf.push('salinity ('+pv('sal',spread(SA))+' ppt)');
+    if(PH.length>1&&spread(PH)>0.2)cf.push('pH ('+pv('ph',spread(PH))+')');
+    if(DO.length>1&&spread(DO)>0.7)cf.push('dissolved oxygen ('+pv('do',spread(DO))+' mg/L)');
+    p4.push('Mean temperature differed by '+pv('temp',dT)+' \u00b0C between the warmest ('+SH[hi[0].id]+') and coolest ('+SH[hi[hi.length-1].id]+') treatments.');
+    p4.push(cf.length?'Treatment means also differed in '+joinL(cf)+', which could confound the temperature effect, so these parameters should be kept as similar as possible across tanks.':'Salinity, pH and oxygen were similar across treatments, so temperature is the main contrast this week.');
+  }
+  p4.push('This summary compares your readings with published ranges (references below) and is a decision aid, not a statistical analysis; most studies cited used short trials or other life stages, so check the original papers before acting on a single week.');
+  return [p1,p2,p3,p5,p4];
+}
+function renderNarr(nE,nD){
+  var el=$('narr');if(!el)return;
+  var paras=narrParas(NS,nE,nD).filter(function(p){return p.length}),count=0,txt=[];
+  paras.forEach(function(p){count+=p.length});
+  var html='<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><h3>Weekly interpretation</h3><button type="button" id="copynarr" class="noprint">Copy text</button></div>';
+  paras.forEach(function(p){html+='<p>'+esc(p.join(' '))+'</p>';txt.push(p.join(' '))});
+  html+='<p class="small">'+count+' sentences. Generated from your readings and a summary of published blue swimming crab (Portunus pelagicus) rearing studies, mostly read from abstracts and excerpts; not a systematic review.</p>';
+  html+='<ol class="refs">'+REFS.map(function(r){return '<li>'+esc(r)+'</li>'}).join('')+'</ol>';
+  el.innerHTML=html;
+  lastNarr=txt.join('\n\n')+'\n\nReferences:\n'+REFS.map(function(r,i){return '['+(i+1)+'] '+r}).join('\n');
+}
+
+$('narr').addEventListener('click',function(ev){
+  var t=ev.target;if(!t||t.id!=='copynarr')return;
+  var done=function(m){t.textContent=m;setTimeout(function(){t.textContent='Copy text'},2500)};
+  try{navigator.clipboard.writeText(lastNarr).then(function(){done('Copied')},function(){done('Copy failed')})}catch(e){done('Copy failed')}
+});
+var zrows={},zoutbox={},zLast=null,ZS={n:0,tr:{}};
+var ZSTG=['Z1','Z2','Z3','Z4','M','C1'];
+var ZCOL={Z1:'#8FD0E3',Z2:'#4FB3C8',Z3:'#E6B450',Z4:'#E88B3C',M:'#C95C4B',C1:'#8E6BB8'};
+function sn(s){var i=ZSTG.indexOf(s);return i<0?null:i+1}
+function zId(date,tk){return 'z_'+date+'_'+tk}
+function zTanks(){var a=[];for(var t=1;t<=4;t++)for(var r=1;r<=3;r++)a.push('T'+t+'R'+r);return a}
+function zList(){return Object.keys(zrows).map(function(k){return zrows[k]}).filter(function(r){return !r.deleted})}
+function zCount(){return zList().length}
+function zpersist(){return Promise.all([idbSet('zrows',zrows),idbSet('zoutbox',zoutbox)]).catch(function(){syncMsg('This browser could not save data on the device. Download a backup often.',1)})}
+function zmsg(t,bad){var m=$('zmsg');m.textContent=t;m.className=bad?'err':'msg'}
+function zDoc(date,sd){if(!date||!sd)return '';var d=Math.round((parse(date)-parse(sd))/864e5);return d>=0?String(d):''}
+function buildZTable(){
+  var h='<thead><tr><th>Tank</th><th>Stocked</th>',i;
+  for(i=1;i<=5;i++)h+='<th>Count R'+i+'</th>';
+  h+='<th>Sum</th><th>Est. count</th><th>Survival</th><th>Stage R1</th><th>Stage R2</th><th>Stage R3</th><th>Remarks</th></tr></thead><tbody>';
+  zTanks().forEach(function(tk){
+    h+='<tr><td><b>'+tk+'</b> <small>'+esc(SH[TR[+tk[1]-1].id])+'</small></td><td><input type="number" min="0" step="any" id="zk-'+tk+'" aria-label="Stocked in '+tk+'"></td>';
+    for(i=0;i<5;i++)h+='<td><input type="number" min="0" step="any" id="zc-'+tk+'-'+i+'" aria-label="'+tk+' count R'+(i+1)+'"></td>';
+    h+='<td id="zs-'+tk+'"></td><td id="ze-'+tk+'"></td><td id="zv-'+tk+'"></td>';
+    for(i=0;i<3;i++)h+='<td><select id="zst-'+tk+'-'+i+'" aria-label="'+tk+' stage R'+(i+1)+'"><option value=""></option>'+ZSTG.map(function(s){return '<option value="'+s+'">'+(s==='M'?'M (megalopa)':s==='C1'?'C1 (crab)':s)+'</option>'}).join('')+'</select></td>';
+    h+='<td><input type="text" id="zrm-'+tk+'" style="width:170px" aria-label="'+tk+' remarks"></td></tr>';
+  });
+  $('ztable').innerHTML=h+'</tbody>';
+}
+function zRecalc(){
+  var mult=parseFloat($('zmult').value)||0;
+  zTanks().forEach(function(tk){
+    var sum=0,n=0,i;
+    for(i=0;i<5;i++){var v=$('zc-'+tk+'-'+i).value.trim();if(v!==''&&isFinite(Number(v))){sum+=Number(v);n++}}
+    var st=parseFloat($('zk-'+tk).value),est=n&&mult>0?sum*mult:null;
+    $('zs-'+tk).textContent=n?String(sum):'';
+    $('ze-'+tk).textContent=est==null?'':String(Math.round(est));
+    $('zv-'+tk).textContent=est!=null&&st>0?(Math.round(est/st*1000)/10)+'%':'';
+  });
+  $('zdoc').value=zDoc($('zd').value,$('zsd').value);
+}
+function zLastStocked(tk){var best=null;zList().forEach(function(r){if(r.tank===tk&&r.stocked&&(!best||r.date>best.date))best=r});return best?best.stocked:''}
+function zLoadDay(){
+  var date=$('zd').value,recs={},first=null,i;
+  zList().forEach(function(r){if(r.date===date)recs[r.tank]=r});
+  zTanks().forEach(function(tk){
+    var r=recs[tk],tid=TR[+tk[1]-1].id,rep=+tk[3];
+    for(i=0;i<5;i++)$('zc-'+tk+'-'+i).value=r&&r.counts&&r.counts[i]!=null?String(r.counts[i]):'';
+    for(i=0;i<3;i++)$('zst-'+tk+'-'+i).value=r&&r.stages?(r.stages[i]||''):'';
+    $('zrm-'+tk).value=r?(r.note||''):'';
+    $('zk-'+tk).value=String(r&&r.stocked?r.stocked:(inits[tid+'-'+rep]||zLastStocked(tk)||''));
+    if(r&&!first)first=r;
+  });
+  if(first){$('zrun').value=first.run||'';$('zsd').value=first.sd||'';$('zmult').value=first.mult||40}
+  else{var pr=load('wq-zrun',null);if(pr){$('zrun').value=pr.run||'';$('zsd').value=pr.sd||'';$('zmult').value=pr.mult||40}}
+  zRecalc();
+}
+function zSave(){
+  var date=$('zd').value;if(!date){zmsg('Choose a date.',1);return}
+  var mult=parseFloat($('zmult').value);if(!(mult>0)){zmsg('Enter a multiplier above 0 (for example 40).',1);return}
+  var run=$('zrun').value.trim(),sd=$('zsd').value||null,docs=zDoc(date,sd),doc=docs===''?null:+docs;
+  var list=[],cleared=0,initCh=false,bad=0,now=Date.now();
+  zTanks().forEach(function(tk){
+    var counts=[],any=false,i,stages=[];
+    for(i=0;i<5;i++){var v=$('zc-'+tk+'-'+i).value.trim();if(v===''){counts.push(null)}else{var nv=Number(v);if(!isFinite(nv)||nv<0){bad++;counts.push(null)}else{counts.push(nv);any=true}}}
+    for(i=0;i<3;i++){var sv=$('zst-'+tk+'-'+i).value;stages.push(sv||'');if(sv)any=true}
+    var st=parseFloat($('zk-'+tk).value),note=$('zrm-'+tk).value.trim();if(note)any=true;
+    var id=zId(date,tk),ex=zrows[id];
+    if(!any){if(ex&&!ex.deleted){var c={};Object.keys(ex).forEach(function(k){c[k]=ex[k]});c.deleted=true;zrows[id]=c;zoutbox[id]=1;cleared++}return}
+    var tid=TR[+tk[1]-1].id,rep=+tk[3];
+    list.push({id:id,date:date,tank:tk,tr:tid,rep:rep,run:run,doc:doc,sd:sd,mult:mult,counts:counts,stages:stages,stocked:st>0?st:null,note:note,deleted:false,by:(me&&me.email)||''});
+    if(st>0&&inits[tid+'-'+rep]!==st){inits[tid+'-'+rep]=st;initCh=true}
+  });
+  if(bad){zmsg('Counts must be numbers of 0 or more.',1);return}
+  list.forEach(function(r){zrows[r.id]=r;zoutbox[r.id]=1});
+  if(initCh)saveSettings();
+  save('wq-zrun',{run:run,sd:sd,mult:mult});
+  zpersist();ui();scheduleSync();
+  ws=monday(parse(date));render();
+  zmsg('Saved '+list.length+' tank'+(list.length===1?'':'s')+' for '+date+(cleared?'; cleared '+cleared+' emptied row'+(cleared===1?'':'s'):'')+'.');
+}
+function toZRow(r){return{id:r.id,date:r.date,tank:r.tank,tr:r.tr,rep:r.rep,run:r.run||'',doc:r.doc==null?null:r.doc,sd:r.sd||null,mult:r.mult||40,counts:r.counts||[],stages:r.stages||[],stocked:r.stocked==null?null:r.stocked,note:r.note||'',deleted:!!r.deleted}}
+function fromZRow(x){return{id:x.id,date:x.date,tank:x.tank,tr:x.tr,rep:x.rep,run:x.run||'',doc:x.doc,sd:x.sd||null,mult:x.mult||40,counts:x.counts||[],stages:x.stages||[],stocked:x.stocked,note:x.note||'',deleted:!!x.deleted,by:x.by_email||''}}
+async function syncZoea(){
+  try{
+    var ids=Object.keys(zoutbox),i,part,r;
+    for(i=0;i<ids.length;i+=200){
+      part=ids.slice(i,i+200);
+      r=await sb.from('zoea_monitoring').upsert(part.map(function(id){return toZRow(zrows[id])}),{onConflict:'id'});
+      if(r.error)throw r.error;
+      part.forEach(function(id){delete zoutbox[id]});
+      await idbSet('zoutbox',zoutbox);
+    }
+    var cursor=zLast||'1970-01-01T00:00:00+00:00',maxTs=zLast,guard=0,q,prev;
+    while(guard++<500){
+      q=await sb.from('zoea_monitoring').select('*').gte('updated_at',cursor).order('updated_at',{ascending:true}).order('id',{ascending:true}).limit(1000);
+      if(q.error)throw q.error;
+      q.data.forEach(function(x){if(!maxTs||x.updated_at>maxTs)maxTs=x.updated_at;if(zoutbox[x.id])return;zrows[x.id]=fromZRow(x)});
+      if(q.data.length<1000)break;
+      prev=cursor;cursor=q.data[q.data.length-1].updated_at;if(cursor===prev)break;
+    }
+    zLast=maxTs;await idbSet('zLast',zLast);await idbSet('zrows',zrows);
+  }catch(e){
+    if(/zoea_monitoring/.test((e&&e.message)||''))throw new Error('the zoea monitoring table is missing in Supabase; run the updated supabase-setup.sql once');
+    throw e;
+  }
+}
+function zoeaRows(){
+  var rows=[['Date','Run','Day of culture','Tank','Treatment','Stocked','Count R1','Count R2','Count R3','Count R4','Count R5','Sum of counts','Multiplier','Estimated count','Survival (%)','Stage R1','Stage R2','Stage R3','Remarks']];
+  zList().sort(function(a,b){return (a.date+a.tank).localeCompare(b.date+b.tank)}).forEach(function(r){
+    var c=r.counts||[],sum=0,n=0;c.forEach(function(v){if(v!=null){sum+=v;n++}});
+    var est=n&&r.mult>0?sum*r.mult:'';
+    rows.push([r.date,r.run||'',r.doc==null?'':r.doc,r.tank,SH[r.tr]||r.tr,r.stocked==null?'':r.stocked,c[0]==null?'':c[0],c[1]==null?'':c[1],c[2]==null?'':c[2],c[3]==null?'':c[3],c[4]==null?'':c[4],n?sum:'',r.mult||'',est,est!==''&&r.stocked>0?Math.round(est/r.stocked*1000)/10:'',(r.stages||[])[0]||'',(r.stages||[])[1]||'',(r.stages||[])[2]||'',r.note||'']);
+  });
+  return rows;
+}
+function mean(a){return a.reduce(function(x,y){return x+y},0)/a.length}
+function stackSvg(comp,tname){
+  var W=320,H=150,L=34,R=8,T0=8,B=22,n=7,bw=(W-L-R)/n*0.62,ph=H-T0-B;
+  var x=function(i){return L+(W-L-R)*(i+0.5)/n},y=function(v){return T0+ph*(1-v/100)};
+  var s='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Stage composition for '+esc(tname)+'">';
+  [0,50,100].forEach(function(v){s+='<line class="grid-l" x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'"/><text class="ax" x="'+(L-5)+'" y="'+(y(v)+3)+'" text-anchor="end">'+v+'%</text>'});
+  DN.forEach(function(d,i){s+='<text class="ax" x="'+x(i)+'" y="'+(H-6)+'" text-anchor="middle">'+d+'</text>'});
+  comp.forEach(function(c,i){if(!c.total)return;var base=0;ZSTG.forEach(function(st){if(!c[st])return;var hp=c[st]/c.total*100;s+='<rect x="'+(x(i)-bw/2)+'" y="'+y(base+hp)+'" width="'+bw+'" height="'+Math.max(0.5,y(base)-y(base+hp))+'" fill="'+ZCOL[st]+'"><title>'+DN[i]+' '+st+': '+Math.round(hp)+'% ('+c[st]+' of '+c.total+')</title></rect>';base+=hp})});
+  return s+'</svg>';
+}
+function renderZoea(days){
+  var el=$('zrep');if(!el)return;
+  var scope=view==='all'?TR:[tById(view)];
+  var recs=zList().filter(function(r){return days.indexOf(r.date)>-1&&(view==='all'||r.tr===view)});
+  ZS={n:recs.length,tr:{}};
+  var head='<h3 style="margin:20px 0 8px">Zoea stage monitoring</h3>';
+  if(!recs.length){el.innerHTML=zCount()?head+'<p class="note">No zoea monitoring records for this week.</p>':'';return}
+  var pL={k:'lsi',n:'Larval stage index',u:'',dec:2},pS={k:'zsurv',n:'Estimated survival',u:'%',dec:1},INF={min:-1e9,max:1e9};
+  var serL=[],serS=[],comps=[],trows='';
+  scope.forEach(function(t){
+    var rs=recs.filter(function(r){return r.tr===t.id}),lsi=[],sv=[],comp=[],estTank=[];
+    days.forEach(function(d,i){
+      var o={total:0};ZSTG.forEach(function(s){o[s]=0});comp.push(o);
+      var nums=[],svs=[],ests=[];
+      rs.filter(function(r){return r.date===d}).forEach(function(r){
+        (r.stages||[]).forEach(function(s){var k=sn(s);if(k){nums.push(k);o[s]++;o.total++}});
+        var sum=0,cnt=0;(r.counts||[]).forEach(function(v){if(v!=null){sum+=v;cnt++}});
+        if(cnt&&r.mult>0){ests.push(sum*r.mult);if(r.stocked>0)svs.push(sum*r.mult/r.stocked*100)}
+      });
+      lsi.push(nums.length?mean(nums):null);sv.push(svs.length?mean(svs):null);estTank.push(ests.length?mean(ests):null);
+    });
+    serL.push({t:{n:t.n},rg:INF,col:t.col,dash:t.dash,means:lsi});serS.push({t:{n:t.n},rg:INF,col:t.col,dash:t.dash,means:sv});
+    comps.push({t:t,comp:comp});
+    if(!rs.length)return;
+    var pts=[];lsi.forEach(function(v,i){if(v!=null)pts.push([i,v])});
+    var slope=null;if(pts.length>1){var mx=mean(pts.map(function(p){return p[0]})),my=mean(pts.map(function(p){return p[1]})),nu=0,de=0;pts.forEach(function(p){nu+=(p[0]-mx)*(p[1]-my);de+=(p[0]-mx)*(p[0]-mx)});if(de>0)slope=nu/de}
+    var li=-1;lsi.forEach(function(v,i){if(v!=null)li=i});
+    var dom=null,domPct=null,docL=null;
+    if(li>-1){var c=comp[li];ZSTG.forEach(function(s){if(c[s]&&(dom===null||c[s]>c[dom]))dom=s});domPct=dom?c[dom]/c.total*100:null;rs.forEach(function(r){if(r.date===days[li]&&r.doc!=null)docL=r.doc})}
+    var sl=-1;sv.forEach(function(v,i){if(v!=null)sl=i});
+    var svv=sv.filter(function(v){return v!=null});
+    ZS.tr[t.id]={n:rs.length,lsiFirst:pts.length?pts[0][1]:null,lsiLast:pts.length?pts[pts.length-1][1]:null,slope:slope,dom:dom,domPct:domPct,doc:docL,survLast:sl>-1?sv[sl]:null,survAvg:svv.length?mean(svv):null,estLast:sl>-1?estTank[sl]:null};
+    var z=ZS.tr[t.id];
+    trows+='<tr><td><span class="sw" style="border-top:3px '+(t.dash?'dashed':'solid')+' '+t.col+'"></span>'+esc(t.n)+'</td><td>'+rs.length+'</td><td>'+(dom?dom+' ('+Math.round(domPct)+'%)':'\u2013')+'</td><td>'+(z.lsiFirst==null?'\u2013':(Math.round(z.lsiFirst*100)/100)+' \u2192 '+(Math.round(z.lsiLast*100)/100))+'</td><td>'+(slope==null?'\u2013':(Math.round(slope*100)/100))+'</td><td>'+(z.survLast==null?'\u2013':(Math.round(z.survLast*10)/10)+'%')+'</td><td>'+(z.survAvg==null?'\u2013':(Math.round(z.survAvg*10)/10)+'%')+'</td></tr>';
+  });
+  var leg='<p style="margin:6px 0 10px">'+ZSTG.map(function(s){return '<span class="zl"><i style="background:'+ZCOL[s]+'"></i>'+(s==='M'?'M (megalopa)':s==='C1'?'C1 (first crab)':s)+'</span>'}).join('')+'</p>';
+  var h=head+'<p class="note" style="margin:0 0 10px">Stage index: Z1 = 1, Z2 = 2, Z3 = 3, Z4 = 4, megalopa = 5, first crab = 6. Survival is estimated as the sum of the sub-sample counts \u00d7 the multiplier \u00f7 the number stocked per tank.</p>';
+  h+='<div class="charts"><div><p class="ctitle">Larval stage index (mean of sampled zoeae)</p>'+chart(pL,serL,null,null)+'</div><div><p class="ctitle">Estimated survival (%)</p>'+chart(pS,serS,null,null)+'</div></div>';
+  h+='<p class="ctitle" style="margin:16px 0 0">Stage composition (% of sampled zoeae per day)</p>'+leg+'<div class="charts">'+comps.map(function(c){return '<div><p class="ctitle">'+esc(c.t.n)+'</p>'+stackSvg(c.comp,c.t.n)+'</div>'}).join('')+'</div>';
+  h+='<div class="scroll"><table class="mini" style="margin-top:14px"><thead><tr><th>Treatment</th><th>Tank-days</th><th>Dominant stage (latest)</th><th>Stage index, first \u2192 last</th><th>Stages per day</th><th>Est. survival (latest)</th><th>Est. survival (week mean)</th></tr></thead><tbody>'+trows+'</tbody></table></div>';
+  el.innerHTML=h;
+}
+buildZTable();
+$('zd').value=ymd(new Date());
+$('ztable').addEventListener('input',zRecalc);
+['zmult','zsd'].forEach(function(id){$(id).addEventListener('input',zRecalc)});
+$('zd').addEventListener('change',zLoadDay);
+$('zload').onclick=zLoadDay;
+$('zsave').onclick=zSave;
+$('zclear').onclick=function(){zTanks().forEach(function(tk){var i;for(i=0;i<5;i++)$('zc-'+tk+'-'+i).value='';for(i=0;i<3;i++)$('zst-'+tk+'-'+i).value='';$('zrm-'+tk).value=''});zRecalc();zmsg('Sheet cleared. Press Save to remove these records.')};
+$('zcsv').onclick=function(){
+  var q=function(s){s=String(s==null?'':s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+  dl('zoea-monitoring.csv','text/csv',zoeaRows().map(function(r){return r.map(q).join(',')}).join('\n'));
+};
+if(window.__WQ_TEST)window.__wq={sync:sync,rows:function(){return rows},outbox:function(){return outbox},entries:function(){return entries},ready:null};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initApp);else{var __p=initApp();if(window.__WQ_TEST)window.__wq.ready=__p}
+
+render();
+})();
+</script>
+<script>
+if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}
+</script>
+</body>
+</html>
