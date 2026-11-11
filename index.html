@@ -1,0 +1,1791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0B6E78">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="config.js"></script>
+<script defer src="supabase.js"></script>
+<script defer src="xlsx.mini.min.js"></script>
+<title>Water Quality Weekly Log</title>
+<style>
+:root{--bg:#EBF2F1;--card:#FFFFFF;--ink:#0F2A33;--mut:#5A6F77;--line:#D3E0DF;--acc:#0B6E78;--accbg:#DCEFEF;--ok:#237A4B;--okbg:#DDF1E5;--bad:#B93A30;--badbg:#F8E2DF;--band:rgba(35,122,75,.14);--c0:#5A6F77;--c1:#D17A00;--c2:#C23B30;--c3:#2B6FD6;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0B181D;--card:#122429;--ink:#E4F0F0;--mut:#93AAB0;--line:#25424A;--acc:#4FC3CE;--accbg:#143A40;--ok:#5FCB8A;--okbg:#163A28;--bad:#F2877D;--badbg:#42201D;--band:rgba(95,203,138,.15);--c0:#A9BDC2;--c1:#F2A33A;--c2:#F2877D;--c3:#6FA8FF;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0B181D;--card:#122429;--ink:#E4F0F0;--mut:#93AAB0;--line:#25424A;--acc:#4FC3CE;--accbg:#143A40;--ok:#5FCB8A;--okbg:#163A28;--bad:#F2877D;--badbg:#42201D;--band:rgba(95,203,138,.15);--c0:#A9BDC2;--c1:#F2A33A;--c2:#F2877D;--c3:#6FA8FF;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 Figtree,system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2,h3{font-family:"Bricolage Grotesque",Figtree,system-ui,sans-serif;margin:0;line-height:1.15}
+main{max-width:1040px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between;margin-bottom:20px}
+h1{font-size:clamp(26px,5vw,38px);font-weight:700}
+.sub{color:var(--mut);margin:4px 0 0}
+.weeknav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.weeknav strong{min-width:150px;text-align:center;font-weight:600}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 14px;min-height:40px}
+button:hover{border-color:var(--acc)}
+button.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+:root[data-theme="dark"] button.primary{color:#06242A}
+button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:20px}
+section>h2{font-size:22px;margin-bottom:14px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--mut);font-weight:500}
+label small{font-weight:400}
+input,textarea,select{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;min-height:40px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:14px}
+.msg{color:var(--ok);font-weight:500}
+.err{color:var(--bad);font-weight:500}
+.stats{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:12px}
+.stat{background:var(--bg);border-radius:10px;padding:12px 14px}
+.stat b{font:700 28px "Bricolage Grotesque",Figtree,sans-serif;display:block}
+.stat span{color:var(--mut);font-size:14px}
+.attn{margin:0 0 16px;padding:12px 14px;border-radius:10px;background:var(--badbg);color:var(--ink)}
+.attn.good{background:var(--okbg)}
+.cards{display:grid;gap:16px;grid-template-columns:1fr}.charts{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}.ctitle{font-weight:600;font-size:14px;margin:0 0 2px}
+.pcard{border:1px solid var(--line);border-radius:12px;padding:14px}
+.phead{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:6px}
+.phead h3{font-size:18px}
+.phead small{display:block;color:var(--mut);font-weight:400;font-family:Figtree,sans-serif}
+.chip{font-size:13px;font-weight:600;padding:3px 10px;border-radius:99px;white-space:nowrap;background:var(--accbg);color:var(--acc)}
+.chip.ok{background:var(--okbg);color:var(--ok)}
+.chip.bad{background:var(--badbg);color:var(--bad)}
+svg.chart{width:100%;height:auto;display:block}
+.chart .ax{fill:var(--mut);font-size:10px}
+.chart .grid-l{stroke:var(--line);stroke-width:1}
+.chart .band{fill:var(--band)}
+.chart .ln{fill:none;stroke-width:2.2;stroke-linejoin:round}
+.chart .dot{fill:var(--acc);stroke:var(--card);stroke-width:1.5}
+.chart .dot.bad{stroke:var(--bad);stroke-width:3}
+.nums{display:flex;gap:16px;font-size:14px;margin:6px 0 4px}
+.nums span{color:var(--mut)}
+.note{font-size:14px;color:var(--mut);margin:4px 0 0}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.n{white-space:normal;max-width:200px}
+th{color:var(--mut);font-weight:600}
+td.bad{color:var(--bad);font-weight:600}
+td button{min-height:32px;padding:4px 10px;font-size:13px}
+td button.arm{background:var(--badbg);border-color:var(--bad);color:var(--bad)}
+details summary{cursor:pointer;font:600 18px "Bricolage Grotesque",Figtree,sans-serif}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}.tabs button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}:root[data-theme="dark"] .tabs button.on{color:#06242A}.sw{display:inline-block;width:22px;vertical-align:middle;margin-right:6px}table.mini{min-width:0;margin:6px 0 4px;font-size:13px}table.mini th,table.mini td{padding:4px 10px 4px 0}
+[hidden]{display:none!important}
+.narr{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:24px 0 0;background:var(--bg)}.narr h3{font-size:18px;margin:0}.narr p{margin:0 0 10px}.narr .small{font-size:12px;color:var(--mut)}.narr ol.refs{font-size:12px;color:var(--mut);padding-left:22px;margin:8px 0 0}.narr ol.refs li{margin-bottom:4px}
+.ztab{min-width:1250px}.zok{color:var(--ok);font-weight:600}.zwarn{color:var(--bad);font-weight:600}.ztab input,.ztab select{width:76px;min-height:34px;padding:4px 6px;font-size:14px}.ztab td,.ztab th{padding:6px 8px}.ztab small{color:var(--mut)}.zl{display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:13px}.zl i{width:12px;height:12px;border-radius:2px;display:inline-block}
+.empty{color:var(--mut);margin:0}
+@media print{header .weeknav button,#entry,#targets,td button,.noprint{display:none!important}body{background:#fff}section{break-inside:avoid;border-color:#ccc}}
+
+/* ===================== layout, menu and look (v2) ===================== */
+:root{--radius:16px;--shadow:0 1px 2px rgba(15,42,51,.05),0 8px 24px rgba(15,42,51,.06);--navw:248px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--shadow:0 1px 2px rgba(0,0,0,.35),0 8px 24px rgba(0,0,0,.25)}}
+body{-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
+.app{min-height:100vh}
+.content{min-width:0}
+main{max-width:1180px;margin:0;padding:10px 24px 56px}
+section{border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;margin-bottom:18px}
+button{border-radius:10px;font-weight:600;transition:background .15s,border-color .15s,box-shadow .15s}
+button:hover{background:var(--bg)}
+button.primary:hover{background:var(--acc);filter:brightness(1.08)}
+input,textarea,select{border-radius:10px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) button.primary,:root:not([data-theme="light"]) .logo{color:#06242A}}
+
+/* sidebar / bottom navigation */
+.nav{background:var(--card);border-right:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px;padding:20px 18px 14px}
+.logo{width:40px;height:40px;border-radius:12px;background:var(--acc);color:#fff;display:grid;place-items:center;flex:none}
+.logo svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.brand b{display:block;font-size:17px;line-height:1.2}
+.brand small{color:var(--mut);font-size:12px}
+.menu{display:flex;flex-direction:column;gap:2px;padding:6px 10px 16px}
+.menu a{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;color:var(--ink);text-decoration:none;font-weight:600;font-size:15px;min-height:44px}
+.menu a svg{width:21px;height:21px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.menu a:hover{background:var(--bg)}
+.menu a[aria-current="page"]{background:var(--accbg);color:var(--acc)}
+.menu a:focus-visible{outline:3px solid var(--acc);outline-offset:-2px}
+.l-short{display:none}
+
+/* top bar */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:22px 24px 6px;max-width:1180px}
+.topbar h1{font-size:clamp(22px,3.2vw,30px);margin:0;font-weight:700}
+.topbar p{margin:3px 0 0;color:var(--mut);font-size:14px}
+.chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 14px;min-height:38px;font-size:13px;font-weight:600;white-space:nowrap;flex:none}
+.chip i{width:9px;height:9px;border-radius:50%;background:var(--mut);flex:none}
+.chip.ok i{background:var(--ok)}
+.chip.pend i,.chip.warn i{background:#D98A00}
+.chip.err i{background:var(--bad)}
+
+/* week bar */
+.weekbar{margin:8px 24px 6px;max-width:1132px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:10px 14px;box-shadow:var(--shadow);position:sticky;top:8px;z-index:5}
+.weekbar .weeknav{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.weekbar strong{min-width:150px;text-align:center}
+.weekbar .note{margin:8px 0 0;font-size:13px}
+
+/* report area */
+.rbar{display:flex;justify-content:flex-end;margin-bottom:12px}
+.rbtns{display:flex;gap:8px;flex-wrap:wrap}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;background:var(--bg);padding:4px;border-radius:999px;width:fit-content;max-width:100%;margin-bottom:16px}
+.tabs button{border:0;background:transparent;border-radius:999px;padding:6px 14px;min-height:36px;font-weight:600;color:var(--mut)}
+.tabs button:hover{background:transparent;color:var(--ink)}
+.tabs button.on{background:var(--card);color:var(--acc);box-shadow:0 1px 3px rgba(0,0,0,.14);border:0}
+.stat{border-radius:14px}
+.pcard{border-radius:14px}
+.printonly{display:none}
+
+/* zoea sheet: cards instead of one very wide table */
+.zgroup{margin:0 0 20px}
+.zgt{display:flex;align-items:center;gap:8px;font-size:17px;margin:0 0 10px}
+.zcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:12px}
+.zcard{border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--bg)}
+.zctop{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.zctop b{font-size:16px}
+.zob{font-size:13px;font-weight:700;color:var(--mut);padding:2px 10px;border-radius:999px}
+.zob.zok{color:var(--ok);background:var(--okbg)}
+.zob.zwarn{color:var(--bad);background:var(--badbg)}
+.zlab{font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;margin:12px 0 5px}
+.zlh{text-transform:none;letter-spacing:0;font-weight:500}
+.zrow5,.zrow6{display:grid;gap:6px}
+.zrow5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.zrow6{grid-template-columns:repeat(6,minmax(0,1fr))}
+.zrow5 label,.zrow6 label{font-size:12px;gap:3px;text-align:center;font-weight:600}
+.zrow5 input,.zrow6 input{-moz-appearance:textfield;appearance:textfield;min-width:0;min-height:40px;padding:6px 2px;text-align:center;font-size:15px;background:var(--card)}
+.zrow5 input::-webkit-inner-spin-button,.zrow6 input::-webkit-inner-spin-button,.zrow5 input::-webkit-outer-spin-button,.zrow6 input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.zcard .zf{font-size:13px;margin-top:2px}
+.zcard .zf input{background:var(--card)}
+.zres{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:13px;color:var(--mut);margin-top:7px;min-height:20px}
+.zres b{color:var(--ink)}
+
+/* tables */
+th{font-size:13px}
+.scroll{border-radius:12px}
+
+/* small screens: bottom menu */
+@media (max-width:899px){
+  .nav{position:fixed;left:0;right:0;bottom:0;z-index:30;border-right:0;border-top:1px solid var(--line);padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px));box-shadow:0 -4px 16px rgba(15,42,51,.08)}
+  .brand{display:none}
+  .menu{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:2px;padding:0}
+  .menu a{flex-direction:column;gap:2px;padding:7px 2px 6px;font-size:11px;text-align:center;min-height:52px;justify-content:center;border-radius:10px}
+  .menu a svg{width:22px;height:22px}
+  .l-long{display:none}.l-short{display:inline}
+  main{padding:8px 14px 100px}
+  .topbar{padding:14px 14px 4px}
+  .weekbar{margin:6px 14px}
+  .weekbar strong{min-width:0;flex:1 1 auto}
+  section{padding:16px}
+  .zcards{grid-template-columns:1fr}
+}
+@media (min-width:900px){
+  .app{display:grid;grid-template-columns:var(--navw) minmax(0,1fr)}
+  .nav{position:sticky;top:0;height:100vh;align-self:start;overflow:auto}
+}
+@media print{
+  .nav,.topbar,.weekbar,.rbar{display:none!important}
+  .app{display:block}.content{display:block}
+  main{padding:0;max-width:none}
+  section{box-shadow:none;padding:0;border:0}
+  .printonly{display:block;font-size:20px;margin:0 0 10px}
+}
+
+.rt{min-width:640px}
+.rt td{vertical-align:top}
+.rt small,.zcard small{display:block;color:var(--mut);font-size:12px;font-weight:400}
+.rt td.n{white-space:normal;min-width:130px;max-width:240px}
+.rt td button{min-height:32px;padding:4px 10px;font-size:13px}
+.topbar>div{min-width:0;flex:1 1 auto}
+textarea{max-width:100%}
+input[type=file]{width:auto;max-width:100%;padding:8px 10px;min-height:0}
+.how{margin:0 0 6px}
+.how summary{font:600 14px system-ui,sans-serif;color:var(--acc);cursor:pointer}
+@media (max-width:899px){.topbar p{display:none}.tabs{border-radius:16px;width:100%}}
+
+/* ===== commodity selector and commodity-specific pages ===== */
+.combar{display:flex;align-items:center;gap:10px;padding:14px 24px 0;max-width:1180px}
+.combar label{font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+.combar select{width:auto;min-width:240px;font-weight:700;font-size:15px;min-height:40px;border-radius:999px;padding:6px 16px;background:var(--card);border:1px solid var(--line)}
+body[data-com="bsc"] .genonly{display:none!important}
+body[data-com="gen"] .crabonly{display:none!important}
+.gsrow,.gshead{display:grid;grid-template-columns:minmax(150px,1.4fr) 100px 100px 70px;gap:8px;align-items:center;margin-bottom:6px;max-width:580px}
+.gshead{font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase}
+.gsl{font-weight:600}.gsu{color:var(--mut);font-size:13px}
+.gsck{flex-direction:row;align-items:center;gap:8px;color:var(--ink);font-weight:600;font-size:15px}
+.gsck input{width:auto;min-height:0}
+@media (max-width:899px){.combar{padding:12px 14px 0}.combar select{flex:1;min-width:0}}
+@media print{.combar{display:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="nav noprint" id="nav">
+  <div class="brand"><span class="logo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg></span><div><b>Water Log</b><small>Hatchery monitoring</small></div></div>
+  <nav class="menu" id="menu" aria-label="Main menu"><a href="#report" data-nav="report"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg><span class="l-long">Report</span><span class="l-short">Report</span></a><a href="#add" data-nav="add"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><span class="l-long">Add reading</span><span class="l-short">Add</span></a><a href="#zoea" data-nav="zoea" class="crabonly"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9.5 14.5a2.6 2.6 0 0 0 2.5 2.5"/></svg><span class="l-long">Zoea sheet</span><span class="l-short">Zoea</span></a><a href="#growth" data-nav="growth" class="genonly"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4M4 20h16"/><path d="M8 15l4-4 3 3 5-6"/></svg><span class="l-long">Growth sampling</span><span class="l-short">Growth</span></a><a href="#readings" data-nav="readings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg><span class="l-long">Readings</span><span class="l-short">Readings</span></a><a href="#import" data-nav="import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg><span class="l-long">Import &amp; export</span><span class="l-short">Import</span></a><a href="#settings" data-nav="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span class="l-long">Settings &amp; sync</span><span class="l-short">Settings</span></a></nav>
+</aside>
+<div class="content">
+<div class="combar noprint"><label for="comsel">Commodity</label><select id="comsel" aria-label="Commodity"></select></div>
+<header class="topbar noprint">
+  <div><h1 id="vtitle">Weekly report</h1><p id="vsub"></p></div>
+  <button type="button" class="chip" id="chip" aria-label="Sync status. Open settings and sync"><i></i><span id="chiptxt">Starting…</span></button>
+</header>
+<div class="weekbar noprint" id="weekbar">
+  <div class="weeknav">
+    <button id="prev" aria-label="Previous week">&lsaquo; Prev</button>
+    <strong id="weeklbl"></strong>
+    <button id="next" aria-label="Next week">Next &rsaquo;</button>
+    <button id="today">This week</button><button id="latest">Latest data</button>
+    <label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)">Go to <input type="date" id="gotod" aria-label="Go to the week containing this date" style="width:auto"></label>
+  </div>
+  <p id="dstat" class="note noprint" role="status"></p>
+</div>
+<main>
+<section id="sync" class="noprint" data-view="settings">
+  <h2>Account &amp; sync</h2>
+  <p id="syncmsg" role="status" class="note" style="margin:0 0 10px">Starting…</p>
+  <form id="login" class="row" style="margin:0" novalidate hidden>
+    <label style="min-width:220px;flex:1">Email<input type="email" id="lemail" autocomplete="username"></label>
+    <label style="min-width:200px;flex:1">Password<input type="password" id="lpass" autocomplete="current-password"></label>
+    <button class="primary" type="submit" style="align-self:flex-end">Sign in</button>
+  </form>
+  <div class="row" id="syncrow" style="margin-top:0" hidden><button type="button" id="syncnow">Sync now</button><button type="button" id="signout">Sign out</button></div>
+</section>
+
+<section id="entry" data-view="add" data-com="bsc">
+  <form id="f" novalidate>
+    <div class="grid" id="meta">
+      <label>Date<input type="date" id="d" required></label>
+      <label>Time<input type="time" id="t"></label>
+      <label>Reading<select id="sess"><option value="AM">AM reading</option><option value="PM">PM reading</option><option value="DAY">Whole day (AM and PM)</option></select></label>
+      <label>Treatment<select id="tr" required></select></label>
+      <label>Replicate<select id="rep" required></select></label>
+    </div>
+    <div class="grid" id="pin" style="margin-top:12px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))"></div>
+    <p class="note">Choose AM or PM, then type that session's readings in each box, separated by spaces or commas. Choose Whole day to enter both sessions at once, like a row in your sheet. The app combines every reading for a tank and day into the daily mean.</p>
+    <div class="grid" id="sv" style="margin-top:12px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">
+      <label>Alive count <small>optional, for survival rate</small><input type="number" inputmode="numeric" min="0" id="alive"></label>
+      <label>Initial count <small>stocked in this tank</small><input type="number" inputmode="numeric" min="1" id="init"></label>
+    </div>
+    <label style="margin-top:12px">Notes<textarea id="note" rows="2" placeholder="Water change, feeding, unusual observations"></textarea></label>
+    <div class="row">
+      <button class="primary" type="submit">Save reading</button>
+      <span id="fmsg" role="status"></span>
+    </div>
+  </form>
+</section>
+
+<section id="zoea" class="noprint" data-view="zoea" data-com="bsc">
+  <details class="how"><summary>How this sheet works</summary><p class="note" style="margin:8px 0 0">Record the sub-sample counts for each tank and, for the 10 zoeae observed in each tank, how many are at each stage (Z1, Z2, Z3, Z4, M for megalopa, C1 for first crab); the six stage numbers should add up to 10. Estimated count = sum of the counts &times; multiplier; survival = estimated count &divide; stocked per tank. Saving again for the same date replaces that day.</p></details>
+  <div class="grid" id="zhead" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr))">
+    <label>Date<input type="date" id="zd"></label>
+    <label>Run<input type="text" id="zrun" placeholder="e.g. Run 9"></label>
+    <label>Stocking (spawn) date<input type="date" id="zsd"></label>
+    <label>Day of culture<input type="text" id="zdoc" readonly></label>
+    <label>Multiplier<input type="number" id="zmult" value="40" min="0" step="any"></label>
+    <div style="align-self:end"><button class="primary" type="button" id="zsave2">Save zoea sheet</button></div>
+  </div>
+  <div id="ztable" style="margin-top:16px"></div>
+  <div class="row"><button class="primary" type="button" id="zsave">Save zoea sheet</button><button type="button" id="zload">Reload saved values for this date</button><button type="button" id="zclear">Clear sheet</button><span id="zmsg" role="status"></span></div>
+</section>
+
+<section id="gentry" class="noprint" data-view="add" data-com="gen" hidden>
+  <div class="grid">
+    <label>Date<input type="date" id="gd"></label>
+    <label>Time<input type="time" id="gt"></label>
+    <label>Session<select id="gs"><option value="AM">AM reading</option><option value="PM">PM reading</option></select></label>
+    <label><span id="gunitlbl">Unit</span><select id="gu"></select></label>
+  </div>
+  <div class="grid" id="gpin" style="margin-top:12px;grid-template-columns:repeat(auto-fill,minmax(180px,1fr))"></div>
+  <p class="note" style="margin:10px 0 0">Enter one value per box (or several separated by spaces; the app uses their mean). Saving again for the same date, session and unit replaces that reading. Change the unit names, target ranges and optional parameters in Settings.</p>
+  <label style="margin-top:12px">Notes<textarea id="gnote" rows="2" placeholder="Water change, feeding, unusual observations"></textarea></label>
+  <div class="row"><button class="primary" type="button" id="gsave">Save reading</button><span id="gmsg" role="status"></span></div>
+</section>
+
+<section id="growth" class="noprint" data-view="growth" data-com="gen" hidden>
+  <details class="how"><summary>How monthly sampling works</summary><p class="note" style="margin:8px 0 0">Once a month, measure a sample of animals from each unit. Choose the date and unit, then type or paste one animal per line with the measurements in the order shown (separate the numbers with spaces, tabs or commas). The app shows the mean, SD, minimum and maximum as you type. Saving again for the same unit and date replaces that sample. The Report page shows growth per day, specific growth rate and survival compared with the previous sampling.</p></details>
+  <div class="grid" style="margin-top:12px">
+    <label>Date<input type="date" id="grd"></label>
+    <label><span>Unit</span><select id="gru"></select></label>
+    <label>Alive count <small>optional</small><input type="number" min="0" id="gralive"></label>
+    <label>Initial stocked <small>optional</small><input type="number" min="1" id="grinit"></label>
+  </div>
+  <label style="margin-top:12px"><span id="grlabel">Measurements</span><textarea id="grtext" rows="8"></textarea></label>
+  <div id="grsum" class="scroll" style="margin-top:10px"></div>
+  <label style="margin-top:10px">Notes<input type="text" id="grnote"></label>
+  <div class="row"><button class="primary" type="button" id="grsave">Save sample</button><button type="button" id="grclear">Clear</button><span id="grmsg" role="status"></span></div>
+  <h3 style="font-size:17px;margin:20px 0 8px">Saved samples</h3>
+  <div class="scroll" id="grlist"></div>
+</section>
+
+<section id="import" class="noprint" data-view="import">
+  <details open>
+    <summary>Import from a file or your spreadsheet</summary>
+    <p class="note" style="margin:8px 0 10px">Save or download your daily-record sheet as .xlsx or .csv (in Google Sheets: File, then Download), and choose it here. The app reads the tank rows (T1R1 to T4R3) from the daily block and calculates the daily means. If a tank and date are already saved, the imported values replace them, so you can import an updated file again at any time. For a .csv file, export the sheet tab you want.</p>
+    <p class="note" style="margin:0 0 8px">Easiest way to import everything at once: download the CSV template, fill in one row per tank per day with all parameters in that row, save it as .csv, and choose it below. Your own sheet layout also works.</p>
+    <div class="row" style="margin:0 0 10px"><button type="button" id="tpl">Download CSV template</button></div>
+    <div class="row" style="margin-top:0"><label style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)">Choose file <input type="file" id="ifile" accept=".xlsx,.xls,.csv,.tsv,.txt" style="width:auto"></label></div>
+    <div class="row" id="shrow" hidden><label style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)">Sheet <select id="shsel" style="width:auto;max-width:100%"></select></label><button class="primary" type="button" id="goimp">Import this sheet</button></div>
+    <p id="imsg" role="status" style="margin:8px 0 0"></p>
+    <h3 style="font-size:16px;margin:18px 0 6px">Or paste cells</h3>
+    <p class="note" style="margin:8px 0 10px">In the sheet, select the daily block (the rows from T1R1 to T4R3, together with the row that shows the date), copy it, and paste it here. Daily means are calculated for you. If a tank and date are already saved, the pasted values replace them. If no date is found in the paste, the Date field above is used.</p>
+    <textarea id="paste" rows="6" placeholder="Paste copied cells here"></textarea>
+    <div class="row"><button class="primary" id="doimp" type="button">Import pasted rows</button><span id="pmsg" role="status"></span></div>
+  </details>
+</section>
+
+<section id="report" data-view="report">
+  <h2 class="printonly">Water quality weekly report<span id="pweek"></span></h2>
+  <div class="rbar noprint">
+    <span class="rbtns"><button id="rephtml" type="button">Download report (HTML)</button><button id="xls" type="button">Download Excel</button><button id="print" type="button">Print report</button></span>
+  </div>
+  <div class="tabs noprint" id="tabs" role="tablist" aria-label="Treatment view"></div>
+  <div class="stats" id="stats"></div>
+  <p class="attn" id="attn"></p>
+  <div class="cards" id="cards"></div>
+  <div id="zrep"></div>
+  <div class="narr" id="narr"></div>
+</section>
+
+<section id="readings" data-view="readings">
+  <p class="note" style="margin:0 0 12px">Values are daily means. Hover a value to see the individual readings.</p>
+  <div class="scroll" id="tbl"></div>
+</section>
+
+<section id="data" class="noprint" data-view="import">
+  <h2>Download and backup</h2>
+  <p class="note" style="margin:-6px 0 12px">Readings are saved on this device first and uploaded to your Supabase project when you are online and signed in. Download a CSV, an Excel file or a backup now and then to keep your own copy.</p>
+  <div class="row" style="margin-top:0"><button id="csv" type="button">Download CSV</button><button id="zcsv" type="button">Download zoea CSV</button><button id="bak" type="button">Download backup</button><label style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)">Restore backup <input type="file" id="rest" accept=".json,application/json" style="width:auto"></label><span id="emsg" role="status"></span></div>
+  <p class="note">Free to use. Readings are sent only to your own Supabase project.</p>
+</section>
+
+<section id="targets" data-view="settings" data-com="bsc">
+  <details open>
+    <summary>Target ranges</summary>
+    <p class="note" style="margin:8px 0 12px">Defaults suit seawater culture. Change them to match your species; the graphs and report update right away.</p>
+    <div class="grid" id="tgrid"></div>
+    <h3 style="font-size:17px;margin:18px 0 8px">Temperature by treatment</h3>
+    <p class="note" style="margin:0 0 10px">Control is ambient hatchery water, so set its range to what the hatchery normally runs. Treatments default to the set temperature ±1 °C.</p>
+    <div class="grid" id="ttgrid"></div>
+  </details>
+</section>
+<section id="gset" class="noprint" data-view="settings" data-com="gen" hidden>
+  <h2 style="font-size:20px;margin-bottom:6px">Settings for <span id="gsname"></span></h2>
+  <p class="note" style="margin:0 0 12px">Starting values come from published guidelines (see below). They vary with life stage and rearing system, so set them to match your protocol. Changes sync to your co-worker.</p>
+  <label style="max-width:520px"><span id="gsunitlbl">Units</span><input type="text" id="gsunits"></label>
+  <h3 style="font-size:16px;margin:16px 0 6px">Target ranges</h3>
+  <div class="gshead"><span></span><span>Min</span><span>Max</span><span></span></div>
+  <div id="gsgrid"></div>
+  <p class="note" style="margin:10px 0 0">Growth parameters measured monthly: <b id="gsgrowth"></b>.</p>
+  <details class="how" style="margin-top:10px"><summary>Where the starting ranges come from</summary><ol class="refs" id="gsrefs" style="font-size:13px;color:var(--mut);padding-left:22px"></ol></details>
+</section>
+</main>
+</div>
+</div>
+
+<script>
+(function(){
+var P=[
+ {k:'temp',n:'Temperature',u:'°C',min:20,max:28,dec:1,step:0.1},
+ {k:'sal',n:'Salinity',u:'ppt',min:30,max:35,dec:1,step:0.1},
+ {k:'ph',n:'pH',u:'',min:7.8,max:8.4,dec:2,step:0.01},
+ {k:'do',n:'Dissolved oxygen',u:'mg/L',min:4,max:14,dec:2,step:0.1},
+ {k:'surv',s:1,n:'Survival rate',u:'%',min:0,max:100,dec:1,step:0.1},
+ 
+ 
+ 
+];
+var TR=[
+ {id:'c',code:'T1',n:'T1 · Control (ambient)',tab:'T1 · Control',sub:'Ambient hatchery water',col:'var(--c0)',dash:'',tmin:25,tmax:29},
+ {id:'t1',code:'T2',n:'T2 · 30 °C',tab:'T2 · 30 °C',sub:'30 °C',col:'var(--c1)',dash:'6 3',tmin:29,tmax:31},
+ {id:'t2',code:'T3',n:'T3 · 32 °C',tab:'T3 · 32 °C',sub:'32 °C',col:'var(--c2)',dash:'2 3',tmin:31,tmax:33},
+ {id:'t3',code:'T4',n:'T4 · 26 °C',tab:'T4 · 26 °C',sub:'26 °C',col:'var(--c3)',dash:'10 3 2 3',tmin:25,tmax:27}
+];
+var DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+var entries=[];
+var ranges=load('wq-ranges',{});
+var tt=load('wq-tt',{});
+var inits=load('wq-init',{});
+P.forEach(function(p){var r=ranges[p.k];if(r&&isFinite(r.min)&&isFinite(r.max)){p.min=r.min;p.max=r.max}});
+TR.forEach(function(t){var r=tt[t.id];if(r&&isFinite(r.min)&&isFinite(r.max)){t.tmin=r.min;t.tmax=r.max}});
+function $(i){return document.getElementById(i)}
+function p2(n){return n<10?'0'+n:''+n}
+function ymd(d){return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())}
+function parse(s){return new Date(s+'T00:00:00')}
+function monday(d){var x=new Date(d);x.setDate(x.getDate()-((x.getDay()+6)%7));x.setHours(0,0,0,0);return x}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function fx(p,v){return Number(v.toFixed(p.dec))}
+function trOf(e){return e.tr||'c'}
+function tById(id){return TR.filter(function(t){return t.id===id})[0]}
+function rng(p,tid){if(p.k==='temp'&&tid!=='all'){var t=tById(tid);return{min:t.tmin,max:t.tmax}}return{min:p.min,max:p.max}}
+var ws=monday(new Date()),view='all';
+
+$('tr').innerHTML='<option value="">Select treatment</option>'+TR.map(function(t){return '<option value="'+t.id+'">'+t.n+'</option>'}).join('');
+$('rep').innerHTML='<option value="">Select replicate</option>'+[1,2,3].map(function(r){return '<option value="'+r+'">Replicate '+r+'</option>'}).join('');
+var HINT={temp:'8AM to 5PM hourly, e.g. 28.1 28 28.3',do:'8AM 5PM, e.g. 4.6 4.8',sal:'AM PM, e.g. 35 35',ph:'AM PM, e.g. 8.42 8.6'};
+$('pin').innerHTML=P.filter(function(p){return !p.s}).map(function(p){return '<label>'+p.n+' <small>'+(p.u||'')+'</small><input type="text" inputmode="decimal" autocomplete="off" placeholder="'+HINT[p.k]+'" id="in-'+p.k+'"></label>'}).join('');
+$('tgrid').innerHTML=P.filter(function(p){return p.k!=='temp'&&!p.s}).map(function(p){return '<div><label>'+p.n+' <small>'+(p.u||'')+'</small></label><div style="display:flex;gap:6px;margin-top:4px"><input type="number" step="any" id="mn-'+p.k+'" value="'+p.min+'" aria-label="'+p.n+' minimum"><input type="number" step="any" id="mx-'+p.k+'" value="'+p.max+'" aria-label="'+p.n+' maximum"></div></div>'}).join('');
+$('ttgrid').innerHTML=TR.map(function(t){return '<div><label>'+t.n+' <small>°C</small></label><div style="display:flex;gap:6px;margin-top:4px"><input type="number" step="any" id="tm-'+t.id+'" value="'+t.tmin+'" aria-label="'+t.n+' minimum temperature"><input type="number" step="any" id="tx-'+t.id+'" value="'+t.tmax+'" aria-label="'+t.n+' maximum temperature"></div></div>'}).join('');
+P.filter(function(p){return p.k!=='temp'&&!p.s}).forEach(function(p){['mn-','mx-'].forEach(function(pre){$(pre+p.k).addEventListener('change',function(){
+  var a=parseFloat($('mn-'+p.k).value),b=parseFloat($('mx-'+p.k).value);
+  if(isFinite(a)&&isFinite(b)&&a<b){p.min=a;p.max=b;ranges[p.k]={min:a,max:b};saveSettings();render()}
+})})});
+TR.forEach(function(t){['tm-','tx-'].forEach(function(pre){$(pre+t.id).addEventListener('change',function(){
+  var a=parseFloat($('tm-'+t.id).value),b=parseFloat($('tx-'+t.id).value);
+  if(isFinite(a)&&isFinite(b)&&a<b){t.tmin=a;t.tmax=b;tt[t.id]={min:a,max:b};saveSettings();render()}
+})})});
+
+function now(){var n=new Date();return p2(n.getHours())+':'+p2(n.getMinutes())}
+$('d').value=ymd(new Date());$('t').value=now();
+function prefill(){var v=inits[$('tr').value+'-'+$('rep').value];if(v)$('init').value=v}
+$('tr').addEventListener('change',prefill);$('rep').addEventListener('change',prefill);
+var HINTS={AM:{temp:'8AM to 11AM hourly, e.g. 28.1 28 28.3',do:'8AM reading, e.g. 4.6',sal:'AM reading, e.g. 35',ph:'AM reading, e.g. 8.42'},PM:{temp:'12NN to 5PM hourly, e.g. 28.4 28.5 28.2',do:'5PM reading, e.g. 4.8',sal:'PM reading, e.g. 35',ph:'PM reading, e.g. 8.6'},DAY:{temp:'Hourly, 8AM to 5PM (first four = AM)',do:'8AM 5PM, e.g. 4.6 4.8',sal:'AM PM, e.g. 35 35',ph:'AM PM, e.g. 8.42 8.6'}};
+function setHints(){var h=HINTS[$('sess').value]||HINTS.DAY;P.forEach(function(p){if(!p.s)$('in-'+p.k).placeholder=h[p.k]})}
+$('sess').value=new Date().getHours()<12?'AM':'PM';$('sess').addEventListener('change',setHints);setHints();
+
+$('f').addEventListener('submit',function(ev){
+  ev.preventDefault();
+  var date=$('d').value,vals={},any=false;
+  if(!date){msg('Choose a date.',1);return}
+  if(!$('tr').value){msg('Choose a treatment.',1);return}
+  if(!$('rep').value){msg('Choose a replicate.',1);return}
+  var raw={},bad=false;
+  P.forEach(function(p){if(p.s)return;var s=$('in-'+p.k).value.trim();if(!s)return;var a=s.split(/[\s,;]+/).map(Number);if(a.some(function(n){return !isFinite(n)})){bad=true;return}raw[p.k]=a;vals[p.k]=a.reduce(function(x,y){return x+y},0)/a.length;any=true});
+  if(bad){msg('Use numbers only, separated by spaces or commas.',1);return}
+  var al=$('alive').value,ini=parseFloat($('init').value),surv=null;
+  if(al!==''){var alv=parseFloat(al);if(!isFinite(alv)||alv<0||!(ini>0)){msg('For survival, enter both the alive count and the initial count.',1);return}if(alv>ini){msg('Alive count cannot exceed the initial count.',1);return}vals.surv=alv/ini*100;surv={alive:alv,init:ini};any=true}
+  if(ini>0&&inits[$('tr').value+'-'+$('rep').value]!==ini){inits[$('tr').value+'-'+$('rep').value]=ini;saveSettings()}
+  if(!any){msg('Enter at least one parameter value.',1);return}
+  putEntries([{id:Date.now()+''+Math.floor(Math.random()*1000),date:date,time:$('t').value||'',tr:$('tr').value,rep:parseInt($('rep').value,10),sess:$('sess').value,vals:vals,raw:raw,surv:surv,note:$('note').value.trim()}],false);
+  P.forEach(function(p){if(!p.s)$('in-'+p.k).value=''});$('alive').value='';$('note').value='';$('t').value=now();
+  ws=monday(parse(date));
+  msg(({AM:'AM',PM:'PM',DAY:'Whole-day'})[$('sess').value]+' reading saved for '+tById($('tr').value).n+', replicate '+$('rep').value+'.');render();
+});
+function msg(t,bad){var m=$('fmsg');m.textContent=t;m.className=bad?'err':'msg';clearTimeout(msg.t);msg.t=setTimeout(function(){m.textContent=''},3500)}
+
+$('prev').onclick=function(){ws.setDate(ws.getDate()-7);render()};
+$('next').onclick=function(){ws.setDate(ws.getDate()+7);render()};
+$('today').onclick=function(){ws=monday(new Date());render()};
+$('print').onclick=function(){try{window.print()}catch(e){}};
+$('tabs').addEventListener('click',function(ev){var b=ev.target.closest('button[data-v]');if(b){view=b.dataset.v;render()}});
+
+$('tbl').addEventListener('click',function(ev){
+  var b=ev.target.closest('button[data-id]');if(!b)return;
+  if(!b.classList.contains('arm')){b.classList.add('arm');b.textContent='Confirm?';setTimeout(function(){if(b.isConnected){b.classList.remove('arm');b.textContent='Delete'}},3000);return}
+  removeEntry(b.dataset.id);
+});
+
+function chart(p,series,band,dom){
+  var W=320,H=150,L=40,R=10,T=10,B=22;
+  var all=[];series.forEach(function(s){s.means.forEach(function(m){if(m!=null)all.push(m)})});
+  if(band)all.push(band.min,band.max);
+  var l0=all.length?Math.min.apply(null,all):0,h0=all.length?Math.max.apply(null,all):1;if(dom){l0=dom[0];h0=dom[1]}
+  var pad=(h0-l0)*0.12||1,lo=l0-pad,hi=h0+pad;if(l0>=0&&lo<0)lo=0;
+  var x=function(i){return L+(W-L-R)*i/6},y=function(v){return T+(H-T-B)*(1-(v-lo)/(hi-lo))};
+  var s='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(p.n)+' daily average for the week">';
+  if(band)s+='<rect class="band" x="'+L+'" y="'+y(band.max)+'" width="'+(W-L-R)+'" height="'+Math.max(1,y(band.min)-y(band.max))+'"/>';
+  [lo,(lo+hi)/2,hi].forEach(function(v){s+='<line class="grid-l" x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'"/><text class="ax" x="'+(L-5)+'" y="'+(y(v)+3)+'" text-anchor="end">'+fx(p,v)+'</text>'});
+  DN.forEach(function(d,i){s+='<text class="ax" x="'+x(i)+'" y="'+(H-6)+'" text-anchor="middle">'+d+'</text>'});
+  series.forEach(function(sr){
+    var pts=[];sr.means.forEach(function(m,i){if(m!=null)pts.push({i:i,v:m})});
+    var st='style="stroke:'+sr.col+'"'+(sr.dash?' stroke-dasharray="'+sr.dash+'"':'');
+    if(pts.length>1)s+='<polyline class="ln" '+st+' points="'+pts.map(function(q){return x(q.i)+','+y(q.v)}).join(' ')+'"/>';
+    pts.forEach(function(q){var bad=q.v<sr.rg.min||q.v>sr.rg.max;s+='<circle class="dot'+(bad?' bad':'')+'" style="fill:'+sr.col+'" cx="'+x(q.i)+'" cy="'+y(q.v)+'" r="4"><title>'+sr.t.n+' '+DN[q.i]+': '+fx(p,q.v)+' '+p.u+'</title></circle>'});
+  });
+  return s+'</svg>';
+}
+
+var lastSummary=[],NS={};function renderCrab(){lastSummary=[];NS={};dataStat();
+  var days=[];for(var i=0;i<7;i++){var d=new Date(ws);d.setDate(d.getDate()+i);days.push(ymd(d))}
+  var a=parse(days[0]),b=parse(days[6]),o={month:'short',day:'numeric'};
+  $('weeklbl').textContent=a.toLocaleDateString(undefined,o)+' – '+b.toLocaleDateString(undefined,o)+', '+b.getFullYear();
+  if($('pweek'))$('pweek').textContent=' – '+$('weeklbl').textContent;
+  $('tabs').innerHTML=[{id:'all',tab:'All treatments'}].concat(TR).map(function(t){return '<button type="button" data-v="'+t.id+'" role="tab" aria-selected="'+(view===t.id)+'" class="'+(view===t.id?'on':'')+'">'+t.tab+'</button>'}).join('');
+  var scope=view==='all'?TR:[tById(view)];
+  var es=entries.filter(function(e){return days.indexOf(e.date)>-1&&(view==='all'||trOf(e)===view)}).sort(function(x,y){return (x.date+x.time).localeCompare(y.date+y.time)});
+  var logged={},trs={};es.forEach(function(e){logged[e.date]=1;trs[trOf(e)]=1});
+  var nDays=Object.keys(logged).length,nTr=Object.keys(trs).length,clean=0,attn=[],cards='';
+  P.forEach(function(p){
+    var ser=scope.map(function(t){
+      var rg=rng(p,t.id);
+      var vals=[];es.forEach(function(e){if(trOf(e)!==t.id||(t.rep&&e.rep!==t.rep)||e.vals[p.k]==null)return;var rw=e.raw&&e.raw[p.k];if(rw&&rw.length)rw.forEach(function(v,i){vals.push({d:e.date,v:v,s:sessOf(e,p.k,i)})});else vals.push({d:e.date,v:e.vals[p.k],s:(e.sess==='AM'||e.sess==='PM')?e.sess:null})});
+      var out=vals.filter(function(x){return x.v<rg.min||x.v>rg.max});
+      var means=days.map(function(dd){var r=vals.filter(function(x){return x.d===dd});return r.length?r.reduce(function(s,x){return s+x.v},0)/r.length:null});
+      var dmean=function(s){return days.map(function(dd){var r=vals.filter(function(x){return x.d===dd&&x.s===s});return r.length?r.reduce(function(a,x){return a+x.v},0)/r.length:null})};
+      var n=vals.length,av=n?vals.reduce(function(s,x){return s+x.v},0)/n:null;
+      return{t:t,rg:rg,vals:vals,out:out,means:means,mAM:dmean('AM'),mPM:dmean('PM'),aAM:avgS(vals,'AM'),aPM:avgS(vals,'PM'),col:t.col,dash:t.dash,av:av,mn:n?Math.min.apply(null,vals.map(function(x){return x.v})):null,mx:n?Math.max.apply(null,vals.map(function(x){return x.v})):null};
+    });
+    var has=ser.filter(function(s){return s.vals.length}),totOut=0,totN=0;
+    ser.forEach(function(s){totOut+=s.out.length;totN+=s.vals.length;if(s.out.length)attn.push(p.n+' – '+s.t.n+' ('+s.out.length+' of '+s.vals.length+')')});
+    if(has.length&&!totOut&&!p.s)clean++;
+    var band=p.s?null:view==='all'?(p.k==='temp'?null:{min:p.min,max:p.max}):ser[0].rg;
+    var tgt=p.s?'Alive count divided by initial stock':view==='all'&&p.k==='temp'?'Target set per treatment':'Target '+fx(p,band.min)+'–'+fx(p,band.max)+(p.u?' '+p.u:'');
+    var chip=!totN?'<span class="chip">No data</span>':totOut?'<span class="chip bad">'+totOut+' of '+totN+' out of range</span>':'<span class="chip ok">In range</span>';
+    var note;
+    if(!totN)note='No readings logged for this parameter this week.';
+    else if(view==='all'){
+      var srt=has.slice().sort(function(x,y){return x.av-y.av});
+      note=has.length>1?'Weekly averages ran from '+fx(p,srt[0].av)+' ('+srt[0].t.n+') to '+fx(p,srt[srt.length-1].av)+' ('+srt[srt.length-1].t.n+')'+(p.u?' '+p.u:'')+'.':'Only '+has[0].t.n+' has data this week.';
+    }else{
+      var pv=[].concat.apply([],ser.map(function(s){return s.vals})),s0={rg:ser[0].rg,out:[].concat.apply([],ser.map(function(s){return s.out}))},pm=days.map(function(dd){var r=pv.filter(function(x){return x.d===dd});return r.length?r.reduce(function(a,x){return a+x.v},0)/r.length:null}),m2=pm.filter(function(m){return m!=null}),tr='';
+      if(m2.length>1){var df=m2[m2.length-1]-m2[0],th=(s0.rg.max-s0.rg.min)*0.1||0.05;tr=Math.abs(df)<th?' Daily averages stayed steady.':' Daily averages '+(df>0?'rose':'fell')+' from '+fx(p,m2[0])+' to '+fx(p,m2[m2.length-1])+(p.u?' '+p.u:'')+'.'}
+      var dd2=s0.out.map(function(x){return DN[days.indexOf(x.d)]}).filter(function(v,i,r){return r.indexOf(v)===i});
+      note=(s0.out.length?'Out of range on '+dd2.join(', ')+'.':(p.s?'':'All readings stayed within target.'))+tr;
+    }
+    has.forEach(function(s){lastSummary.push([$('weeklbl').textContent,p.n+(p.u?' ('+p.u+')':''),s.t.n,fx(p,s.av),s.aAM==null?'':fx(p,s.aAM),s.aPM==null?'':fx(p,s.aPM),fx(p,s.mn),fx(p,s.mx),s.out.length,s.vals.length])});NS[p.k]=has.map(function(s){return{id:s.t.id,n:s.vals.length,av:s.av,aAM:s.aAM,aPM:s.aPM,mn:s.mn,mx:s.mx,means:s.means}});var mini=has.length?'<table class="mini"><thead><tr><th>Treatment</th><th>Mean</th>'+(p.s?'':'<th>AM mean</th><th>PM mean</th>')+'<th>Min–max</th><th class="noprint">Out</th></tr></thead><tbody>'+has.map(function(s){return '<tr><td><span class="sw" style="border-top:3px '+(s.dash?'dashed':'solid')+' '+s.col+'"></span>'+s.t.n+'</td><td>'+fx(p,s.av)+'</td>'+(p.s?'':'<td>'+(s.aAM==null?'–':fx(p,s.aAM))+'</td><td>'+(s.aPM==null?'–':fx(p,s.aPM))+'</td>')+'<td>'+fx(p,s.mn)+'–'+fx(p,s.mx)+'</td><td class="'+(s.out.length?'bad ':'')+'noprint">'+s.out.length+' of '+s.vals.length+'</td></tr>'}).join('')+'</tbody></table>':'';
+    cards+='<article class="pcard"><div class="phead"><h3>'+p.n+'<small>'+tgt+'</small></h3>'+chip+'</div>'+charts(p,ser,band)+mini+'<p class="note">'+note+'</p></article>';
+  });
+  renderZoea(days);renderNarr(es.length,nDays);
+  $('stats').innerHTML='<div class="stat"><b>'+es.length+'</b><span>readings logged</span></div><div class="stat"><b>'+nDays+' of 7</b><span>days with data</span></div><div class="stat"><b>'+(view==='all'?nTr+' of '+TR.length:clean+' of '+(P.length-1))+'</b><span>'+(view==='all'?'treatments with data':'parameters in range all week')+'</span></div>'+(view==='all'?'<div class="stat"><b>'+clean+' of '+(P.length-1)+'</b><span>parameters in range for every treatment</span></div>':'');
+  var at=$('attn');
+  if(!es.length){at.className='attn';at.textContent='No readings for this view yet. Add one above to start the report.'}
+  else if(attn.length){at.className='attn';at.textContent='Needs attention: '+attn.join('; ')+'.'}
+  else{at.className='attn good';at.textContent='Every recorded parameter stayed within its target range this week.'}
+  $('cards').innerHTML=cards;
+  if(!es.length){$('tbl').innerHTML='<p class="empty">Nothing logged for this view.</p>'}
+  else{
+    var SHORT={temp:'Temp (\u00b0C)',sal:'Salinity (ppt)',ph:'pH',do:'DO (mg/L)',surv:'Survival (%)'};
+    var h='<table class="rt"><thead><tr><th>Date</th><th>Tank</th>'+P.map(function(p){return '<th>'+(SHORT[p.k]||p.n)+'</th>'}).join('')+'<th>Notes</th><th></th></tr></thead><tbody>';
+    es.forEach(function(e){
+      var t=tById(trOf(e)),ss=(e.sess==='AM'||e.sess==='PM')?e.sess:'Day';
+      h+='<tr><td>'+DN[days.indexOf(e.date)]+' '+e.date.slice(5)+'<small>'+ss+(e.time?' \u00b7 '+esc(e.time):'')+'</small></td><td><b>'+(e.rep?t.code+'R'+e.rep:'')+'</b><small>'+esc(t.n)+'</small></td>';
+      P.forEach(function(p){var v=e.vals[p.k];if(v==null){h+='<td>\u2013</td>'}else{var rg=rng(p,t.id);h+='<td'+(v<rg.min||v>rg.max?' class="bad"':'')+' title="'+(e.raw&&e.raw[p.k]?e.raw[p.k].join(', '):'')+'">'+fx(p,v)+'</td>'}});
+      var by=(e.by||'').split('@')[0];
+      h+='<td class="n">'+esc(e.note)+(by?'<small>by '+esc(by)+'</small>':'')+'</td><td>'+(canWrite?'<button data-id="'+e.id+'">Delete</button>':'')+'</td></tr>';
+    });
+    $('tbl').innerHTML=h+'</tbody></table>';fillNames();
+  }
+}
+function dl(name,mime,text){if(dlNS){dlNS.save({filename:name,data:text}).catch(function(){});return}try{var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:mime}));a.download=name;document.body.appendChild(a);a.click();a.remove()}catch(e){}}
+function emsg(t,bad){var m=$('emsg');m.textContent=t;m.className=bad?'err':'msg'}
+function pmsg(t,bad){var m=$(pmT);m.textContent=t;m.className=bad?'err':'msg'}
+function readingRows(){
+  var P4=[['temp','Temperature','C'],['do','Dissolved oxygen','mg/L'],['sal','Salinity','ppt'],['ph','pH','']];
+  var hdr=['Date','Treatment','Tank'];
+  P4.forEach(function(p){var u=p[2]?' ('+p[2]+')':'';hdr.push(p[1]+' daily mean'+u,p[1]+' AM'+u,p[1]+' PM'+u)});
+  hdr.push('Alive','Initial','Survival (%)','Notes','Entered by');
+  var rows=[hdr],map={},order=[];
+  entries.forEach(function(e){
+    var key=e.date+'|'+trOf(e)+'|'+e.rep,g=map[key];
+    if(!g){g=map[key]={date:e.date,tr:trOf(e),rep:e.rep,p:{},surv:null,notes:[],by:{}};order.push(key)}
+    P4.forEach(function(q){
+      var k=q[0],rw=e.raw&&e.raw[k],c=g.p[k]||(g.p[k]={all:[],am:[],pm:[]});
+      if(rw&&rw.length){rw.forEach(function(v,i){c.all.push(v);(sessOf(e,k,i)==='AM'?c.am:c.pm).push(v)})}
+      else if(e.vals&&e.vals[k]!=null){c.all.push(e.vals[k]);if(e.sess==='AM')c.am.push(e.vals[k]);else if(e.sess==='PM')c.pm.push(e.vals[k])}
+    });
+    if(e.surv)g.surv=e.surv;
+    if(e.note&&g.notes.indexOf(e.note)<0)g.notes.push(e.note);
+    if(e.by)g.by[e.by]=1;
+  });
+  var tcode=function(g){var i=0;TR.forEach(function(t,x){if(t.id===g.tr)i=x});return 'T'+(i+1)+'R'+g.rep};
+  order.sort(function(a,b){var x=map[a],y=map[b],kx=x.date+tcode(x),ky=y.date+tcode(y);return kx<ky?-1:kx>ky?1:0});
+  var av=function(a){return a.length?Number((a.reduce(function(s,v){return s+v},0)/a.length).toFixed(3)):''};
+  order.forEach(function(k){
+    var g=map[k],t=tById(g.tr),row=[g.date,t.n,tcode(g)];
+    P4.forEach(function(q){var c=g.p[q[0]]||{all:[],am:[],pm:[]};row.push(av(c.all),av(c.am),av(c.pm))});
+    var s=g.surv;
+    row.push(s&&s.alive!=null?s.alive:'',s&&s.init!=null?s.init:'',s&&s.init>0&&s.alive!=null?Math.round(s.alive/s.init*1000)/10:'',g.notes.join('; '),Object.keys(g.by).join(', '));
+    rows.push(row);
+  });
+  return rows;
+}
+$('csv').onclick=function(){
+  var q=function(s){s=String(s==null?'':s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+  dl('water-quality-log.csv','text/csv',readingRows().map(function(r){return r.map(q).join(',')}).join('\n'));
+};
+$('xls').onclick=function(){
+  if(typeof XLSX==='undefined'){emsg('The Excel library could not load, so Excel export is unavailable. Use Download CSV instead.',1);return}
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(readingRows()),'Readings');
+  var sm=[['Week','Parameter','Treatment','Mean','AM mean','PM mean','Min','Max','Readings out of range','Readings']].concat(lastSummary);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sm),'Weekly summary');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(zoeaRows()),'Zoea monitoring');
+  dl('water-quality-log.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',XLSX.write(wb,{type:'array',bookType:'xlsx'}));
+};
+$('rephtml').onclick=function(){
+  var clone=$('report').cloneNode(true);
+  [].slice.call(clone.querySelectorAll('.noprint')).forEach(function(n){n.remove()});
+  var css=document.querySelector('style').textContent;
+  var html='<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Water quality weekly report</title><style>'+css+'</style></head><body><main><h1>Water quality weekly report</h1><p class="sub">'+esc($('weeklbl').textContent)+'</p><section>'+clone.innerHTML+'</section></main></body></html>';
+  dl('water-quality-report-'+ymd(ws)+'.html','text/html',html);
+};
+$('bak').onclick=function(){dl('water-quality-backup.json','application/json',JSON.stringify({entries:entries,gentries:gentries,zoea:zList(),growth:gList()}))};
+$('rest').addEventListener('change',function(){
+  var f=this.files[0];if(!f)return;var rd=new FileReader();
+  rd.onload=function(){try{var o=JSON.parse(rd.result),ids={};entries.forEach(function(e){ids[e.id]=1});var add=(o.entries||[]).filter(function(e){return e&&e.id&&!ids[e.id]&&e.date&&e.vals});putEntries(add,false);var gadd=(o.gentries||[]).filter(function(e){return e&&e.id&&e.com&&e.date&&e.vals&&!rows[e.id]});gadd.forEach(function(e){e.deleted=false;rows[e.id]=e;outbox[e.id]=1});if(gadd.length)commit();var gradd=(o.growth||[]).filter(function(r){return r&&r.id&&r.com&&r.date&&!grows[r.id]});gradd.forEach(function(r){r.deleted=false;grows[r.id]=r;goutbox[r.id]=1});if(gradd.length){gpersist();scheduleSync()}var zadd=(o.zoea||[]).filter(function(r){return r&&r.id&&r.date&&r.tank&&!zrows[r.id]});zadd.forEach(function(r){r.deleted=false;zrows[r.id]=r;zoutbox[r.id]=1});if(zadd.length){zpersist();scheduleSync()}emsg('Restored '+(add.length+gadd.length)+' readings'+(zadd.length?' and '+zadd.length+' zoea records':'')+(gradd.length?' and '+gradd.length+' growth samples':'')+'.');render()}catch(er){emsg('That file is not a valid backup.',1)}};
+  rd.readAsText(f);this.value='';
+});
+var pmT='pmsg';
+function runImport(txt,t){pmT=t;
+  if(isTemplate(txt)){if(isGen()){pmsg('This is the blue swimming crab template. Switch the commodity to Blue swimming crab to import it.',1);return}importTemplate(txt);return}
+  if(isGen()){if(!txt.trim()){pmsg('Nothing to import. Paste cells or choose a file first.',1);return}if(isGenTemplate(txt)){importGen(txt);return}pmsg('This file is not in the '+comName(COM)+' template format. Download the CSV template for '+comName(COM)+' and keep its first row.',1);return}
+  if(isGenTemplate(txt)){pmsg('This looks like a template for another commodity. Switch the commodity first.',1);return}
+  if(!txt.trim()){pmsg('Nothing to import. Paste cells or choose a file first.',1);return}
+  var MON={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+  var cur=$('d').value,n=0,skip=0,ds={},last='',seen={},dup={},dn=0,batch=[];
+  var avg=function(a){return a.reduce(function(x,y){return x+y},0)/a.length};
+  txt.split(/\r?\n/).forEach(function(line){
+    var c=line.split('\t').map(function(x){return x.replace(/^"|"$/g,'').trim()}),i;
+    for(i=0;i<Math.min(c.length,5);i++){var m=c[i].match(/^([A-Za-z]{3})[A-Za-z]*\.?\s+(\d{1,2})[,.]?\s+(\d{4})$/);if(m&&MON[m[1].toLowerCase()]){cur=m[3]+'-'+p2(MON[m[1].toLowerCase()])+'-'+p2(+m[2]);break}}
+    var ti=-1;for(i=0;i<Math.min(c.length,4);i++){if(/^T[1-4]R[1-3]$/i.test(c[i])){ti=i;break}}
+    if(ti<0)return;
+    if(!cur){skip++;return}
+    var code=c[ti].toUpperCase(),tid=TR[+code[1]-1].id,rep=+code[3];
+    var sl={};
+    var nums=function(a,b,k){var r=[],ix=[];for(var j=a;j<=b;j++){var v=c[j];if(v!==undefined&&v!==''&&isFinite(Number(v))){r.push(Number(v));ix.push(j-a)}}sl[k]=ix;return r};
+    var raw={temp:nums(ti+2,ti+11,'temp'),do:nums(ti+13,ti+14,'do'),sal:nums(ti+16,ti+17,'sal'),ph:nums(ti+19,ti+20,'ph')},vals={},any=false;
+    Object.keys(raw).forEach(function(k){if(raw[k].length){vals[k]=avg(raw[k]);any=true}else{delete raw[k]}});
+    if(!any){skip++;return}
+    var key=cur+'|'+tid+'|'+rep;if(seen[key]){dn++;dup[cur]=1;return}seen[key]=1;
+        batch.push({id:Date.now()+''+n+Math.floor(Math.random()*1000),date:cur,time:'',tr:tid,rep:rep,vals:vals,raw:raw,sl:sl,note:(c[ti+22]||'')});
+    n++;ds[cur]=1;last=cur;
+  });
+  if(!n){pmsg('No tank rows found. Copy the daily block from your sheet (the rows starting with T1R1 to T4R3) and try again.',1);return}
+  putEntries(batch,true);ws=monday(parse(last));$('paste').value='';
+  var nd=Object.keys(ds).length;
+  pmsg('Imported '+n+' tank-day'+(n>1?'s':'')+' across '+nd+' date'+(nd>1?'s':'')+(skip?'; skipped '+skip+' empty rows':'')+'.'+(dn?' Skipped '+dn+' rows whose date already appeared earlier in the paste ('+Object.keys(dup).join(', ')+'). Check those date headers in your sheet.':''));render();
+}
+function sessOf(e,k,i){
+  if(e.sess==='AM'||e.sess==='PM')return e.sess;
+  var ix=e.sl&&e.sl[k]&&e.sl[k][i]!=null?e.sl[k][i]:i;
+  return k==='temp'?(ix<4?'AM':'PM'):(ix<1?'AM':'PM');
+}
+function avgS(vals,s){var r=vals.filter(function(x){return x.s===s});return r.length?r.reduce(function(a,x){return a+x.v},0)/r.length:null}
+function charts(p,ser,band){
+  if(p.s)return chart(p,ser,band);
+  if(band&&p.k==='do'&&band.max>=14){var dv=[];ser.forEach(function(s){[s.means,s.mAM,s.mPM].forEach(function(a){a.forEach(function(m){if(m!=null)dv.push(m)})})});var mxv=dv.length?Math.max.apply(null,dv):band.min;band={min:band.min,max:Math.max(mxv,band.min)+1}}
+  var vs=[];ser.forEach(function(s){[s.means,s.mAM,s.mPM].forEach(function(a){a.forEach(function(m){if(m!=null)vs.push(m)})})});
+  if(band)vs.push(band.min,band.max);
+  var dom=vs.length?[Math.min.apply(null,vs),Math.max.apply(null,vs)]:null;
+  var sv=function(k){return ser.map(function(s){return{t:s.t,rg:s.rg,col:s.col,dash:s.dash,means:s[k]}})};
+  return '<div class="charts"><div><p class="ctitle">Daily mean (AM and PM)</p>'+chart(p,sv('means'),band,dom)+'</div><div><p class="ctitle">AM readings</p>'+chart(p,sv('mAM'),band,dom)+'</div><div><p class="ctitle">PM readings</p>'+chart(p,sv('mPM'),band,dom)+'</div></div>';
+}
+var MON3={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+function okDate(y,m,d){var dt=new Date(Date.UTC(y,m-1,d));return dt.getUTCFullYear()===y&&dt.getUTCMonth()===m-1&&dt.getUTCDate()===d?y+'-'+p2(m)+'-'+p2(d):''}
+function parseDate(s){
+  s=String(s||'').trim();var m,y;
+  if(/^\d{5}(\.\d+)?$/.test(s)){var n=Math.floor(+s);if(n>30000&&n<80000){var dt=new Date(Date.UTC(1899,11,30)+n*864e5);return okDate(dt.getUTCFullYear(),dt.getUTCMonth()+1,dt.getUTCDate())}}
+  if((m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})(?:[ T].*)?$/)))return okDate(+m[1],+m[2],+m[3]);
+  if((m=s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2}|\d{4})$/))){y=+m[3];if(y<100)y+=2000;var a=+m[1],b=+m[2];return a>12?okDate(y,b,a):okDate(y,a,b)}
+  if((m=s.match(/^(\d{1,2})[\s\-\/]([A-Za-z]{3})[A-Za-z]*\.?[\s\-\/,]*(\d{2}|\d{4})$/))&&MON3[m[2].toLowerCase()]){y=+m[3];if(y<100)y+=2000;return okDate(y,MON3[m[2].toLowerCase()],+m[1])}
+  if((m=s.match(/^([A-Za-z]{3})[A-Za-z]*\.?\s+(\d{1,2})[,.]?\s+(\d{2}|\d{4})$/))&&MON3[m[1].toLowerCase()]){y=+m[3];if(y<100)y+=2000;return okDate(y,MON3[m[1].toLowerCase()],+m[2])}
+  return '';
+}
+function isTemplate(txt){
+  var l=txt.replace(/^\ufeff/,'').split('\n').filter(function(x){return x.replace(/\t/g,'').trim()})[0]||'';
+  var h=l.split('\t').map(function(x){return x.trim().toLowerCase()});
+  return h.indexOf('date')>-1&&h.indexOf('tank')>-1;
+}
+function normTank(s){var m=String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').match(/^T([1-4])R([1-3])$/);return m?{t:+m[1],r:+m[2]}:null}
+function importTemplate(txt){
+  var lines=txt.replace(/^\ufeff/,'').split('\n').filter(function(l){return l.replace(/\t/g,'').trim()});
+  var H=lines[0].split('\t').map(function(x){return x.trim().toLowerCase().replace(/[\s\-]+/g,'_')}),ix=function(k){return H.indexOf(k)};
+  var HR=['8am','9am','10am','11am','12nn','1pm','2pm','3pm','4pm','5pm'];
+  var cols={temp:HR.map(function(h){return ix('temp_'+h)}),do:[ix('do_am'),ix('do_pm')],sal:[ix('salinity_am'),ix('salinity_pm')],ph:[ix('ph_am'),ix('ph_pm')]};
+  var iD=ix('date'),iT=ix('tank'),iA=ix('alive'),iI=ix('initial'),iR=ix('remarks'),anyCol=false;
+  Object.keys(cols).forEach(function(k){cols[k].forEach(function(j){if(j>-1)anyCol=true})});
+  if(iD<0||iT<0||!anyCol){pmsg('The file needs the template headers (Date, Tank, Temp_8AM to Temp_5PM, DO_AM, DO_PM, Salinity_AM, Salinity_PM, pH_AM, pH_PM). Download the CSV template and keep its first row.',1);return}
+  var n=0,empty=0,dn=0,ds={},dup={},seen={},batch=[],lastDate='',badDate={},badTank={},perTr={c:0,t1:0,t2:0,t3:0},initCh=false,maxD='';
+  lines.slice(1).forEach(function(line){
+    var c=line.split('\t').map(function(x){return x.trim()}),raw0=c[iT]||'',tk=normTank(raw0);
+    if(!tk){if(raw0)badTank[raw0]=1;else if(c.some(function(x,i){return i>1&&x!==''}))badTank['(blank)']=1;return}
+    var dtxt=c[iD]||'',pd=dtxt?parseDate(dtxt):'';
+    if(pd)lastDate=pd;
+    var raw={},sl={},vals={},any=false,surv=null;
+    Object.keys(cols).forEach(function(k){var r=[],s=[];cols[k].forEach(function(j,slot){if(j<0)return;var v=c[j];if(v!==undefined&&v!==''&&isFinite(Number(v))){r.push(Number(v));s.push(slot)}});if(r.length){raw[k]=r;sl[k]=s;vals[k]=r.reduce(function(a,b){return a+b},0)/r.length;any=true}});
+    var al=iA>-1?c[iA]:'',ini=iI>-1?parseFloat(c[iI]):NaN;
+    if(al!==''&&al!==undefined&&isFinite(Number(al))&&ini>0&&Number(al)<=ini){vals.surv=Number(al)/ini*100;surv={alive:Number(al),init:ini};any=true}
+    if(!any){empty++;return}
+    var date=pd||(dtxt?'':lastDate);
+    if(!date){badDate[dtxt||'(blank)']=1;return}
+    var tid=TR[tk.t-1].id,rep=tk.r,key=date+'|'+tid+'|'+rep;
+    if(seen[key]){dn++;dup[date]=1;return}
+    seen[key]=1;
+    batch.push({id:Date.now()+''+n+Math.floor(Math.random()*1000),date:date,time:'',tr:tid,rep:rep,vals:vals,raw:raw,sl:sl,surv:surv,note:iR>-1?(c[iR]||''):''});
+    if(ini>0&&inits[tid+'-'+rep]!==ini){inits[tid+'-'+rep]=ini;initCh=true}
+    n++;perTr[tid]++;ds[date]=1;if(date>maxD)maxD=date;
+  });
+  var nd=Object.keys(ds).length,bd=Object.keys(badDate),bt=Object.keys(badTank),prob=bd.length||bt.length||dn;
+  var det=(empty?' '+empty+' row'+(empty>1?'s':'')+' had no readings and '+(empty>1?'were':'was')+' skipped.':'')+(bd.length?' Date not recognised: '+bd.slice(0,3).join(', ')+(bd.length>3?'...':'')+' (use YYYY-MM-DD).':'')+(bt.length?' Tank not recognised: '+bt.slice(0,3).join(', ')+(bt.length>3?'...':'')+' (use T1R1 to T4R3).':'')+(dn?' '+dn+' row'+(dn>1?'s':'')+' repeated a tank and date ('+Object.keys(dup).join(', ')+') and '+(dn>1?'were':'was')+' skipped.':'');
+  if(!n){pmsg('Nothing was imported.'+det,1);return}
+  putEntries(batch,true);if(initCh)saveSettings();ws=monday(parse(maxD));$('paste').value='';
+  pmsg('Imported '+n+' tank-day'+(n>1?'s':'')+' across '+nd+' date'+(nd>1?'s':'')+' (T1: '+perTr.c+', T2: '+perTr.t1+', T3: '+perTr.t2+', T4: '+perTr.t3+').'+det,!!prob);render();
+}
+$('tpl').onclick=function(){
+  var H=['Date','Tank','Temp_8AM','Temp_9AM','Temp_10AM','Temp_11AM','Temp_12NN','Temp_1PM','Temp_2PM','Temp_3PM','Temp_4PM','Temp_5PM','DO_AM','DO_PM','Salinity_AM','Salinity_PM','pH_AM','pH_PM','Alive','Initial','Remarks'],rows=[H.join(',')],t,r;
+  for(t=1;t<=4;t++)for(r=1;r<=3;r++)rows.push(['','T'+t+'R'+r].concat(new Array(H.length-2).join(',').split(',')).join(','));
+  dl('water-quality-template.csv','text/csv',rows.join('\r\n'));
+};
+$('doimp').onclick=function(){runImport($('paste').value,'pmsg')};
+var MONF=['January','February','March','April','May','June','July','August','September','October','November','December'],wbk=null;
+function imsg(t,bad){var m=$('imsg');m.textContent=t;m.className=bad?'err':'msg'}
+function cellText(c){
+  if(!c||c.v==null)return '';
+  if(c.t==='d'){var d=new Date(c.v.getTime()+43200000);return d.getFullYear()<1950?'':MONF[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear()}
+  return String(c.v).replace(/[\t\r\n]+/g,' ').trim();
+}
+function sheetText(ws){
+  if(!ws['!ref'])return '';
+  var ref=XLSX.utils.decode_range(ws['!ref']),out=[],r,c,row,last=Math.min(ref.e.c,ref.s.c+30);
+  for(r=ref.s.r;r<=ref.e.r;r++){row=[];for(c=ref.s.c;c<=last;c++)row.push(cellText(ws[XLSX.utils.encode_cell({r:r,c:c})]));out.push(row.join('\t'))}
+  return out.join('\n');
+}
+function countTanks(txt){var n=0;txt.split('\n').forEach(function(l){var c=l.split('\t');for(var i=0;i<Math.min(c.length,4);i++){if(/^T[1-4]R[1-3]$/i.test(c[i])){n++;break}}});return n}
+function parseCSV(t){
+  var rows=[],row=[],f='',q=false,i,ch;
+  for(i=0;i<t.length;i++){ch=t[i];
+    if(q){if(ch==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=ch}
+    else if(ch==='"')q=true;
+    else if(ch===','||ch==='\t'){row.push(f.trim());f=''}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&t[i+1]==='\n')i++;row.push(f.trim());rows.push(row.join('\t'));row=[];f=''}
+    else f+=ch}
+  row.push(f.trim());rows.push(row.join('\t'));
+  return rows.join('\n');
+}
+function showSheets(){
+  var names=wbk.csv!==undefined?['This file']:wbk.xl.SheetNames,best=null,bn=0,opts='';
+  wbk.t={};
+  names.forEach(function(nm){var tx=wbk.csv!==undefined?wbk.csv:sheetText(wbk.xl.Sheets[nm]);wbk.t[nm]=tx;var k=countTanks(tx);if(k>bn){bn=k;best=nm}opts+='<option value="'+esc(nm)+'">'+esc(nm)+' ('+k+' tank rows)</option>'});
+  $('shsel').innerHTML=opts;if(best)$('shsel').value=best;
+  $('shrow').hidden=false;
+  imsg(bn?'Pick the sheet to import. The one with the most tank rows is selected.':'No tank rows (T1R1 to T4R3) were found in this file. Check that you chose the right file.',!bn);
+}
+$('ifile').addEventListener('change',function(){
+  var f=this.files[0],inp=this;if(!f)return;wbk=null;$('shrow').hidden=true;imsg('');
+  var nm=f.name.toLowerCase(),rd=new FileReader();
+  if(/\.(csv|tsv|txt)$/.test(nm)){
+    rd.onload=function(){wbk={csv:parseCSV(String(rd.result))};showSheets()};rd.readAsText(f);
+  }else{
+    if(typeof XLSX==='undefined'){imsg('The Excel reader could not load (it needs an internet connection). Save the sheet as .csv and choose that file instead.',1);inp.value='';return}
+    rd.onload=function(){try{wbk={xl:XLSX.read(rd.result,{type:'array',cellDates:true})};showSheets()}catch(e){imsg('Could not read that file. Try saving it as .xlsx or .csv.',1)}};rd.readAsArrayBuffer(f);
+  }
+  inp.value='';
+});
+$('goimp').onclick=function(){if(!wbk||!wbk.t)return;runImport(wbk.t[$('shsel').value]||'','imsg')};
+var dlNS=null,canWrite=true,rows={},outbox={},me=load('wq-me',null),sb=null,session=null,lastSync=null,lastOk=null,syncing=false,syncTimer=null,lastErr='',dbp=null,cfgOk=false;
+function idbOpen(){return dbp||(dbp=new Promise(function(res,rej){var r=indexedDB.open('wq-log',1);r.onupgradeneeded=function(){r.result.createObjectStore('kv')};r.onsuccess=function(){res(r.result)};r.onerror=function(){rej(r.error)}}))}
+function idbGet(k){return idbOpen().then(function(d){return new Promise(function(res,rej){var q=d.transaction('kv').objectStore('kv').get(k);q.onsuccess=function(){res(q.result)};q.onerror=function(){rej(q.error)}})})}
+function idbSet(k,v){return idbOpen().then(function(d){return new Promise(function(res,rej){var t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=function(){res()};t.onerror=function(){rej(t.error)}})})}
+function syncMsg(t,bad){var m=$('syncmsg');m.textContent=t;m.className=bad?'err':'note'}
+function persist(){return Promise.all([idbSet('rows',rows),idbSet('outbox',outbox)]).catch(function(){syncMsg('This browser could not save data on the device. Download a backup often.',1)})}
+function rebuild(){var all=Object.keys(rows).map(function(k){return rows[k]}).filter(function(e){return !e.deleted});entries=all.filter(function(e){return !e.com||e.com==='bsc'});gentries=all.filter(function(e){return e.com&&e.com!=='bsc'})}
+function commit(){rebuild();persist();ui();scheduleSync()}
+function putEntries(list,replace){
+  if(replace){var keys={};list.forEach(function(e){keys[e.date+'|'+trOf(e)+'|'+e.rep]=1});Object.keys(rows).forEach(function(k){var r=rows[k];if(!r.deleted&&(!r.com||r.com==='bsc')&&keys[r.date+'|'+trOf(r)+'|'+r.rep]){r.deleted=true;outbox[r.id]=1}})}
+  list.forEach(function(e){if(!e.by&&me)e.by=me.email;e.deleted=false;rows[e.id]=e;outbox[e.id]=1});
+  commit();
+}
+function removeEntry(id){if(rows[id]){rows[id].deleted=true;outbox[id]=1;commit()}render()}
+function saveSettings(){save('wq-ranges',ranges);save('wq-tt',tt);save('wq-init',inits);save('wq-gcfg',gcfgAll);save('wq-set-dirty',1);scheduleSync();ui()}
+function applySettings(o){
+  ranges=o.ranges||{};tt=o.tt||{};inits=o.inits||{};
+  if(o.gcfg){gcfgAll=o.gcfg;save('wq-gcfg',gcfgAll);if(isGen()){buildGenForm();buildGenSettings()}}
+  P.forEach(function(p){var r=ranges[p.k];if(!p.s&&r&&isFinite(r.min)&&isFinite(r.max)){p.min=r.min;p.max=r.max;var a=$('mn-'+p.k),b=$('mx-'+p.k);if(a)a.value=r.min;if(b)b.value=r.max}});
+  TR.forEach(function(t){var r=tt[t.id];if(r&&isFinite(r.min)&&isFinite(r.max)){t.tmin=r.min;t.tmax=r.max;var a=$('tm-'+t.id),b=$('tx-'+t.id);if(a)a.value=r.min;if(b)b.value=r.max}});
+}
+function fillNames(){}
+function toRow(e){var g=e.com&&e.com!=='bsc';return{id:e.id,date:e.date,time:e.time||'',com:e.com||'bsc',unit:e.unit||null,tr:g?null:trOf(e),rep:g?null:e.rep,sess:e.sess||null,vals:e.vals||{},raw:e.raw||{},sl:e.sl||{},surv:e.surv||null,note:e.note||'',deleted:!!e.deleted}}
+function fromRow(r){return{id:r.id,date:r.date,time:r.time||'',com:r.com&&r.com!=='bsc'?r.com:undefined,unit:r.unit||undefined,tr:r.tr||undefined,rep:r.rep||undefined,sess:r.sess||undefined,vals:r.vals||{},raw:r.raw||{},sl:r.sl||{},surv:r.surv||null,note:r.note||'',by:r.by_email||'',deleted:!!r.deleted}}
+function scheduleSync(){clearTimeout(syncTimer);syncTimer=setTimeout(sync,1500)}
+function chip(st,t){var c=$('chip');if(!c)return;c.className='chip '+st;$('chiptxt').textContent=t}
+function ui(){
+  var n=Object.keys(outbox).length+Object.keys(zoutbox).length+Object.keys(goutbox).length,w=n+' record'+(n===1?'':'s');
+  if(!cfgOk){syncMsg('Cloud sync is not set up yet. Open config.js and paste your Supabase project URL and anon key. Until then everything is saved on this device only.',1);$('login').hidden=true;$('syncrow').hidden=true;chip('warn','This device only');return}
+  $('login').hidden=!!session;$('syncrow').hidden=!session;
+  var who=session&&session.user?session.user.email:(me&&me.email)||'';
+  if(!session){syncMsg('Not signed in. Readings are saved on this device ('+w+' waiting to upload). Sign in to upload them and to see your co-worker\'s readings.');chip('warn',n?'Sign in \u00b7 '+n+' waiting':'Sign in to sync')}
+  else if(!navigator.onLine){syncMsg('Offline. '+w+' waiting to upload; they upload automatically when you are back online.');chip('off',n?'Offline \u00b7 '+n+' waiting':'Offline')}
+  else if(syncing){syncMsg('Syncing…');chip('pend','Syncing…')}
+  else if(lastErr){syncMsg('Could not sync: '+lastErr+' ('+w+' waiting to upload.) It will try again automatically.',1);chip('err','Sync problem')}
+  else{syncMsg('Signed in as '+who+'. '+(n?w+' waiting to upload.':'All readings are uploaded.')+(lastOk?' Last sync '+lastOk.toLocaleTimeString()+'.':''));chip(n?'pend':'ok',n?n+' waiting to upload':'All synced')}
+}
+async function sync(){
+  if(syncing||!sb||!session||!navigator.onLine){ui();return}
+  syncing=true;lastErr='';ui();
+  try{
+    var ids=Object.keys(outbox),i,part,r;
+    for(i=0;i<ids.length;i+=200){
+      part=ids.slice(i,i+200);
+      r=await sb.from('readings').upsert(part.map(function(id){return toRow(rows[id])}),{onConflict:'id'});
+      if(r.error)throw r.error;
+      part.forEach(function(id){delete outbox[id]});
+      await idbSet('outbox',outbox);
+    }
+    if(load('wq-set-dirty',0)){
+      var rs=await sb.from('app_settings').upsert({id:'main',data:{ranges:ranges,tt:tt,inits:inits,gcfg:gcfgAll}},{onConflict:'id'}).select('updated_at');
+      if(rs.error)throw rs.error;
+      save('wq-set-dirty',0);save('wq-set-remote',rs.data&&rs.data[0]?rs.data[0].updated_at:'');
+    }else{
+      var g=await sb.from('app_settings').select('data,updated_at').eq('id','main').maybeSingle();
+      if(g.error)throw g.error;
+      if(g.data&&g.data.updated_at!==load('wq-set-remote','')){applySettings(g.data.data||{});save('wq-ranges',ranges);save('wq-tt',tt);save('wq-init',inits);save('wq-set-remote',g.data.updated_at)}
+    }
+    var cursor=lastSync||'1970-01-01T00:00:00+00:00',maxTs=lastSync,guard=0,q,prev;
+    while(guard++<500){
+      q=await sb.from('readings').select('*').gte('updated_at',cursor).order('updated_at',{ascending:true}).order('id',{ascending:true}).limit(1000);
+      if(q.error)throw q.error;
+      q.data.forEach(function(row){
+        if(!maxTs||row.updated_at>maxTs)maxTs=row.updated_at;
+        if(outbox[row.id])return;
+        rows[row.id]=fromRow(row);
+      });
+      if(q.data.length<1000)break;
+      prev=cursor;cursor=q.data[q.data.length-1].updated_at;
+      if(cursor===prev)break;
+    }
+    await syncZoea();
+    await syncGrowth();
+    lastSync=maxTs;lastOk=new Date();
+    await idbSet('lastSync',lastSync);
+    rebuild();await persist();if(!jumpedOnce)startWeek();render();
+  }catch(e){lastErr=(e&&e.message)||String(e)}
+  syncing=false;ui();
+  if(!lastErr&&(Object.keys(outbox).length||Object.keys(zoutbox).length||Object.keys(goutbox).length))scheduleSync();
+}
+async function initApp(){
+  try{rows=(await idbGet('rows'))||{};outbox=(await idbGet('outbox'))||{};lastSync=(await idbGet('lastSync'))||null;zrows=(await idbGet('zrows'))||{};zoutbox=(await idbGet('zoutbox'))||{};zLast=(await idbGet('zLast'))||null;grows=(await idbGet('grows'))||{};goutbox=(await idbGet('goutbox'))||{};gLast=(await idbGet('gLast'))||null}catch(e){syncMsg('This browser cannot store data on the device, so nothing will be kept after you close the app.',1)}
+  rebuild();applyComUI();startWeek();zLoadDay();render();
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+  var c=window.WQ_CONFIG;
+  cfgOk=!!(window.supabase&&c&&c.url&&c.anonKey&&!/YOUR[-_]/i.test(c.url+c.anonKey));
+  if(cfgOk){try{sb=window.supabase.createClient(c.url,c.anonKey,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'wq-auth'}})}catch(e){sb=null;cfgOk=false}}
+  ui();
+  if(!sb)return;
+  try{var r=await sb.auth.getSession();session=r.data.session;if(session&&session.user){me={email:session.user.email};save('wq-me',me)}}catch(e){}
+  sb.auth.onAuthStateChange(function(ev,s){session=s;if(s&&s.user){me={email:s.user.email};save('wq-me',me)}ui();if(s)sync()});
+  ui();sync();
+  window.addEventListener('online',function(){ui();sync()});
+  window.addEventListener('offline',ui);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)sync()});
+  setInterval(sync,60000);
+}
+$('login').addEventListener('submit',async function(ev){
+  ev.preventDefault();if(!sb)return;syncMsg('Signing in…');
+  try{
+    var r=await sb.auth.signInWithPassword({email:$('lemail').value.trim(),password:$('lpass').value});
+    if(r.error){syncMsg(r.error.message,1);return}
+    session=r.data.session;me={email:r.data.user.email};save('wq-me',me);$('lpass').value='';ui();sync();
+  }catch(e){syncMsg('Could not reach the server. Check your connection and try again.',1)}
+});
+$('syncnow').onclick=function(){sync()};
+$('signout').onclick=async function(){try{await sb.auth.signOut()}catch(e){}session=null;ui()};
+function allDatesCrab(){return entries.map(function(e){return e.date}).concat(zList().map(function(r){return r.date})).sort()}
+function dataStatCrab(){
+  var el=$('dstat');if(!el)return;
+  var zc=zCount();
+  if(!entries.length&&!zc){el.textContent='No readings saved on this device yet.';return}
+  var ds=allDates();
+  el.textContent='Saved on this device: '+entries.length+' readings'+(zc?' and '+zc+' zoea records':'')+' from '+ds[0]+' to '+ds[ds.length-1]+'. Use Prev, Next, Latest data or Go to date to move between weeks.';
+}
+function latestDate(){var t=ymd(new Date()),ds=allDates(),p=ds.filter(function(d){return d<=t});return p.length?p[p.length-1]:(ds[0]||'')}
+function jumpLatest(){var d=latestDate();if(d){ws=monday(parse(d));render()}}
+var jumpedOnce=false;
+function startWeek(){
+  var ds=allDates();if(!ds.length)return;
+  jumpedOnce=true;
+  var a=ymd(ws),b=new Date(ws);b.setDate(b.getDate()+6);var e2=ymd(b);
+  if(!ds.some(function(d){return d>=a&&d<=e2}))jumpLatest();
+}
+$('latest').onclick=jumpLatest;
+$('gotod').addEventListener('change',function(){if(this.value){ws=monday(parse(this.value));render()}});
+var REFS=[
+ 'Ikhwanuddin M, Hayimad T, Ghazali A, Abdul Halim SS, Abdullah SA (2016). Resistance test at early larval stage of blue swimming crab, Portunus pelagicus. Songklanakarin Journal of Science and Technology 38(1): 83-90. (Zoeae: best survival at 30 \u00b0C and 30 ppt, pH 8.0-8.2; no survival at 0, 10 or 50 ppt; ammonia of 2 ppm or more lethal within 24 h; no survival beyond 6 h without aeration.)',
+ 'Ikhwanuddin M, Azra MN, Talpur MAD, Abol-Munafi AB, Shabdin ML (2012). Optimal water temperature and salinity for production of blue swimming crab, Portunus pelagicus, 1st day juvenile crab. AACL Bioflux 5(1). (30 \u00b0C and 30 ppt recommended; larvae at 24-28 \u00b0C or 20 ppt did not reach crab stage 1; zoea 1 to megalopa in 13-14 days.)',
+ 'Cabacaba NS (2014 workshop). Seed production of the blue swimming crab (Portunus pelagicus). In: Proceedings of the International Workshop on Resource Enhancement and Sustainable Aquaculture Practices in Southeast Asia (RESA 2014). SEAFDEC Aquaculture Department, Tigbauan, Iloilo, Philippines. (Guiuan Marine Fisheries Development Center: 28-30 \u00b0C, 32-34 ppt, zoea 1 to megalopa in 10-12 days, longer development below 26 \u00b0C, zoea 1 to megalopa survival of 4.0-7.5%, cannibalism and deteriorating water quality as main causes of mortality, 30-50% daily water exchange.)',
+ 'Romano N, Zeng C (2006). The effects of salinity on the survival, growth and haemolymph osmolality of early juvenile blue swimmer crabs, Portunus pelagicus. Aquaculture. (20-35 ppt suitable for early juveniles; 5 ppt caused complete mortality.)',
+ 'Azra MN, Chen J-C, Hsu T-H, Ikhwanuddin M, Abol-Munafi AB (2019). Growth, molting duration and carapace hardness of blue swimming crab, Portunus pelagicus, instars at different water temperatures. (Instar survival decreased at 32 \u00b0C compared with 24 and 28 \u00b0C.)',
+ 'Juwana S, Aswandy I, Pangabean MGL. Larval development of the Indonesian blue swimming crab, Portunus pelagicus (L), reared in the laboratory. Marine Research in Indonesia 26. (Rearing at 25-30 \u00b0C with dissolved oxygen of 5.3-7.2 ppm; 277 megalopae obtained from 137,870 larvae.)',
+ 'Andres M, Rotllant G, Zeng C (2010). Survival, development and growth of larvae of the blue swimmer crab, Portunus pelagicus, cultured under different photoperiod conditions. Aquaculture 300: 218-222. (At 29 \u00b1 1 \u00b0C, zoea 1 to megalopa took 8.5-10.8 days.)',
+ 'Bryars SR, Havenhand JN (2006). Effects of constant and varying temperatures on the development of blue swimmer crab (Portunus pelagicus) larvae: laboratory observations and field predictions for temperate coastal waters. Journal of Experimental Marine Biology and Ecology 329: 218-229. (Temperature governs larval development rate.)',
+ 'The effects of different water flow rates on the survival rate of blue crab (Portunus pelagicus) zoea IV to megalopa stages. Journal of Coastal Development, Diponegoro University. (Reports 4-6 mg/L dissolved oxygen as needed for larval development.)',
+ 'Ravi R, Manisseri MK (2013). The effect of different pH and photoperiod regimens on the survival rate and developmental period of the larvae of Portunus pelagicus. Iranian Journal of Fisheries Sciences 12(2): 490-499. (pH extremes and sudden pH changes stress crustacean larvae.)',
+ 'Nguyen Thanh Phuong et al. Effects of temperature on the growth and survival of mud crab (Scylla paramamosain) larvae. Can Tho University Journal of Science. (Related species: zoea 3 and 4 died at 33 \u00b0C or above; best survival at 27 \u00b0C.)',
+ 'Nurdiani R, Zeng C (2007). Effects of temperature and salinity on the survival and development of mud crab, Scylla serrata (Forsskal), larvae. Aquaculture Research. (Related species: 25-30 \u00b0C gives reasonable survival, 28-30 \u00b0C shortens the culture cycle.)'
+];
+var SH={c:'T1 (control)',t1:'T2 (30 \u00b0C)',t2:'T3 (32 \u00b0C)',t3:'T4 (26 \u00b0C)'};
+var lastNarr='';
+function cite(){return ' ['+[].slice.call(arguments).join(', ')+']'}
+function joinL(a){return a.length<2?(a[0]||''):a.length===2?a[0]+' and '+a[1]:a.slice(0,-1).join(', ')+', and '+a[a.length-1]}
+function pv(k,v){var p=P.filter(function(x){return x.k===k})[0];return String(fx(p,v))}
+function spread(arr){var v=arr.map(function(x){return x.av});return Math.max.apply(null,v)-Math.min.apply(null,v)}
+function narrParas(S,nE,nD){
+  var wk=$('weeklbl').textContent,all=(view==='all'),trs={};
+  Object.keys(S).forEach(function(k){S[k].forEach(function(x){trs[x.id]=1})});
+  var nT=Object.keys(trs).length;
+  if(!nE&&!ZS.n){return [[
+    'No readings were recorded for '+wk+', so the water conditions for the zoeae could not be assessed this week.',
+    'Published rearing of blue swimming crab zoeae generally uses about 28\u201330 \u00b0C'+cite(1,2,3)+' and a salinity of 30\u201335 ppt'+cite(1,2,3)+'.',
+    'The best zoeal survival has been reported at a pH of 8.0\u20138.2'+cite(1)+', and larvae need dissolved oxygen of roughly 4\u20136 mg/L or more'+cite(6,9)+'.',
+    'Longer larval development has been reported below 26 \u00b0C'+cite(3)+', while juvenile survival declined at 32 \u00b0C'+cite(5)+'.',
+    'Enter or import readings for this week and the report will compare each treatment with these published ranges and explain what the results mean for the zoeae and the stock.'
+  ]]}
+  var cmap={},corder=[],effects={},pa=[],p1=[],p2=[],p3=[],p4=[],p5=[];
+  function addC(k,id){if(!cmap[k]){cmap[k]=[];corder.push(k)}if(cmap[k].indexOf(id)<0)cmap[k].push(id)}
+  p1.push(nE?'For '+wk+', '+nE+' record'+(nE===1?'':'s')+' from '+(all?nT+' of 4 treatments':SH[view])+' on '+nD+' of 7 days '+(nE===1?'was':'were')+' compared with published ranges for blue swimming crab (Portunus pelagicus) larval rearing.':'No water quality readings were recorded for '+wk+', so this interpretation relies on the zoea monitoring records.');
+  // temperature
+  var T=S.temp||[];
+  if(!T.length){p1.push('No temperature readings were recorded this week, so thermal conditions for the zoeae could not be assessed.')}
+  else{
+    var by={low:[],below:[],opt:[],above:[],high:[]};
+    T.forEach(function(x){var v=x.av,c=v<26?'low':v<28?'below':v<=30.5?'opt':v<31.5?'above':'high';by[c].push(SH[x.id]+' at '+pv('temp',v)+' \u00b0C');if(c==='high'||c==='above')effects.th=1;if(c==='low'||c==='below')effects.slow=1;if(c!=='opt')addC('temperature',x.id)});
+    if(by.opt.length)p1.push('Mean temperature in '+joinL(by.opt)+' was within the 28\u201330 \u00b0C range used for larval rearing at the Guiuan hatchery and found best for zoeae'+cite(1,2,3)+'.');
+    if(by.below.length)p1.push('Mean temperature in '+joinL(by.below)+' was just below the 28\u201330 \u00b0C hatchery range'+cite(3)+', so development is likely to be somewhat slower than at 30 \u00b0C.');
+    if(by.low.length)p1.push('Mean temperature in '+joinL(by.low)+' was below 26 \u00b0C, where longer larval development has been reported'+cite(3)+'.');
+    if(by.above.length)p1.push('Mean temperature in '+joinL(by.above)+' was above the 28\u201330 \u00b0C range, while zoeal survival in published trials was best at 30 \u00b0C'+cite(1,2)+', so survival may be lower.');
+    if(by.high.length)p1.push('Mean temperature in '+joinL(by.high)+' was at or above 32 \u00b0C, higher than the larval rearing ranges in the reviewed literature; juvenile P. pelagicus survived less well at 32 \u00b0C'+cite(5)+' and related mud crab zoeae died at 33 \u00b0C or above'+cite(11)+', so this should be treated as thermal stress, whereas 25\u201330 \u00b0C gave reasonable survival in related species'+cite(12)+'.');
+    var sw=[];T.forEach(function(x){if(x.aAM!=null&&x.aPM!=null&&Math.abs(x.aPM-x.aAM)>=1.5)sw.push(SH[x.id]+' ('+(x.aPM>x.aAM?'+':'-')+pv('temp',Math.abs(x.aPM-x.aAM))+' \u00b0C)')});
+    if(sw.length)p1.push('The PM mean differed from the AM mean by 1.5 \u00b0C or more in '+joinL(sw)+', a daily swing that adds stress, so heater and chiller stability should be checked.');
+    if(by.opt.length||by.above.length||by.below.length)p1.push('At temperatures near this range, published rearing has taken roughly 8.5 to 14 days from zoea 1 to megalopa'+cite(2,3,7)+', and temperature is the main driver of development rate'+cite(8)+'.');
+  }
+  // salinity
+  var SA=S.sal||[];
+  if(!SA.length){p2.push('No salinity readings were recorded this week.')}
+  else{
+    var sb={opt:[],low:[],vlow:[],high:[],vhigh:[]};
+    SA.forEach(function(x){var v=x.av,c=(v>=30&&v<=35)?'opt':(v>=25&&v<30)?'low':(v>35&&v<=40)?'high':v<25?'vlow':'vhigh';sb[c].push(SH[x.id]+' at '+pv('sal',v)+' ppt');if(c!=='opt'){addC('salinity',x.id);effects.osm=1}});
+    if(sb.opt.length)p2.push('Mean salinity in '+joinL(sb.opt)+' was within the 30\u201335 ppt range that gave the best zoeal survival'+cite(1,2)+' and overlaps the 32\u201334 ppt used at Guiuan'+cite(3)+'; early juveniles also do well at 20\u201335 ppt'+cite(4)+'.');
+    if(sb.low.length)p2.push('Mean salinity in '+joinL(sb.low)+' was below 30 ppt, where published survival was highest'+cite(1,2)+'.');
+    if(sb.high.length)p2.push('Mean salinity in '+joinL(sb.high)+' was above 35 ppt, a range with little larval data, so evaporation or salt build-up should be checked.');
+    if(sb.vlow.length)p2.push('Mean salinity in '+joinL(sb.vlow)+' was approaching the low-salinity range where larval mortality has been reported (no zoeal survival at 10 ppt'+cite(1)+'; no larvae reached crab stage 1 at 20 ppt'+cite(2)+').');
+    if(sb.vhigh.length)p2.push('Mean salinity in '+joinL(sb.vhigh)+' was approaching the 50 ppt level at which no zoeae survived'+cite(1)+'.');
+  }
+  // pH
+  var PH=S.ph||[];
+  if(!PH.length){p2.push('No pH readings were recorded this week.')}
+  else{
+    var pb={opt:[],near:[],far:[]};
+    PH.forEach(function(x){var v=x.av,c=(v>=8.0&&v<=8.2)?'opt':(v>=7.8&&v<=8.4)?'near':'far';pb[c].push(SH[x.id]+' at '+pv('ph',v));if(c!=='opt'){addC('pH',x.id);effects.ph=1}});
+    if(pb.opt.length)p2.push('Mean pH in '+joinL(pb.opt)+' was within the 8.0\u20138.2 band reported as suitable for zoeae'+cite(1)+'.');
+    if(pb.near.length)p2.push('Mean pH in '+joinL(pb.near)+' was within normal seawater limits but outside the 8.0\u20138.2 band where zoeal survival was highest'+cite(1)+'.');
+    if(pb.far.length)p2.push('Mean pH in '+joinL(pb.far)+' was outside 7.8\u20138.4; survival away from pH 8.0\u20138.2 was very low in published tests'+cite(1)+' and extreme or sudden pH changes stress larvae'+cite(10)+'.');
+    var pw=[];PH.forEach(function(x){if(x.aAM!=null&&x.aPM!=null&&Math.abs(x.aPM-x.aAM)>=0.2)pw.push(SH[x.id])});
+    if(pw.length)p2.push('pH moved by 0.2 or more between the AM and PM readings in '+joinL(pw)+', and sudden pH fluctuations are known to stress crustacean larvae'+cite(10)+'.');
+  }
+  // dissolved oxygen
+  var DO=S.do||[];
+  if(!DO.length){p2.push('No dissolved oxygen readings were recorded this week.')}
+  else{
+    var ob={ok:[],low:[],poor:[],crit:[]};
+    DO.forEach(function(x){var v=x.av,c=v>=5?'ok':v>=4?'low':v>=2?'poor':'crit';ob[c].push(SH[x.id]+' at '+pv('do',v)+' mg/L');if(c!=='ok'){addC('dissolved oxygen',x.id);effects.ox=1}});
+    if(ob.ok.length)p2.push('Mean dissolved oxygen in '+joinL(ob.ok)+' was at or above 5 mg/L, in line with the 5.3\u20137.2 mg/L recorded in a rearing trial'+cite(6)+' and the 4\u20136 mg/L reported as needed by larvae'+cite(9)+'.');
+    if(ob.low.length)p2.push('Mean dissolved oxygen in '+joinL(ob.low)+' was in the lower part of the 4\u20136 mg/L range reported as needed'+cite(9)+', leaving little safety margin.');
+    if(ob.poor.length)p2.push('Mean dissolved oxygen in '+joinL(ob.poor)+' was below the 4\u20136 mg/L range reported as needed for larval development'+cite(9)+', so aeration and stocking density should be reviewed.');
+    if(ob.crit.length)p2.push('Mean dissolved oxygen in '+joinL(ob.crit)+' was critically low; zoeae did not survive beyond 6 hours at 0.65 mg/L in a stress test'+cite(1)+'.');
+    var dw=[];DO.forEach(function(x){if(x.aAM!=null&&x.aPM!=null&&x.aAM-x.aPM>=0.5)dw.push(SH[x.id])});
+    if(dw.length)p2.push('Oxygen was at least 0.5 mg/L lower in the PM readings in '+joinL(dw)+', which fits rising oxygen demand through the day and warmer, saltier water holding less oxygen.');
+  }
+  // survival
+  var SV=S.surv||[];
+  if(!SV.length){p3.push('No survival counts were entered this week, so the effect on the stock can only be inferred from water quality; entering alive and initial counts lets the report compare survival with published benchmarks.')}
+  else{
+    var sl=SV.map(function(x){var m=x.means.filter(function(v){return v!=null}),last=m.length?m[m.length-1]:x.av;return{id:x.id,v:last}});
+    sl.sort(function(a,b){return b.v-a.v});
+    p3.push('Recorded survival ended the week at '+joinL(sl.map(function(x){return SH[x.id]+' '+Math.round(x.v*10)/10+'%'}))+'.');
+    p3.push('For context, published survival over the larval cycle is usually low, about 4\u20137.5% from zoea 1 to megalopa at Guiuan'+cite(3)+', 0.25% to the first crab stage in one trial'+cite(2)+', and 277 megalopae from 137,870 larvae in another'+cite(6)+'; compare like with like, because your counts may cover only part of the larval cycle.');
+    if(sl.length>1&&sl[0].v-sl[sl.length-1].v>=5)p3.push('Survival was highest in '+SH[sl[0].id]+' and lowest in '+SH[sl[sl.length-1].id]+', a gap of '+Math.round((sl[0].v-sl[sl.length-1].v)*10)/10+' percentage points that should be tested statistically across the three replicates before any conclusion is drawn.');
+  }
+  // overall
+  if(!corder.length){
+    p3.push('Overall, every measured parameter stayed within the ranges reported as suitable, so any survival differences are more likely to come from factors not measured here, such as feeding, stocking density, cannibalism or ammonia (2 ppm or more killed zoeae within 24 hours'+cite(1)+').');
+  }else{
+    var ef=[];if(effects.th)ef.push('thermal stress and lower survival');if(effects.slow)ef.push('a longer larval period');if(effects.osm)ef.push('osmotic stress');if(effects.ph)ef.push('acid\u2013base stress');if(effects.ox)ef.push('oxygen stress');
+    var cs=corder.map(function(k){var ids=cmap[k];return k+(ids.length===nT&&nT>1?' in all '+nT+' treatments':' in '+joinL(ids.map(function(i){return SH[i]})))});
+    p3.push('Overall, '+joinL(cs)+' departed from the published optima, which would be expected to cause '+joinL(ef)+' in the zoeae and so reduce the number of megalopae and crablets available for stock enhancement.');
+    p3.push('To protect the stock, confirm aeration, keep the daily 30\u201350% water exchange practised at Guiuan because deteriorating water quality and cannibalism are the main causes of mortality there'+cite(3)+', and correct any deviating parameter gradually, since sudden changes are themselves stressful'+cite(10)+'.');
+  }
+  // zoea stage monitoring
+  var Z=ZS.tr||{},zk=Object.keys(Z).filter(function(id){return Z[id].lsiLast!=null||Z[id].survLast!=null}),r2=function(v){return Math.round(v*100)/100};
+  if(zk.length){
+    var zd=zk.filter(function(id){return Z[id].dom}),stg=function(v){return r2(v)===1?'1 stage':r2(v)+' stages'};
+    p5.push(zd.length?'Zoea stage monitoring covered '+ZS.n+' tank-day'+(ZS.n===1?'':'s')+' this week, and at the latest sampling the dominant stage was '+joinL(zd.map(function(id){return SH[id]+' '+Z[id].dom+' ('+Math.round(Z[id].domPct)+'% of sampled zoeae'+(Z[id].doc!=null?', day '+Z[id].doc:'')+')'}))+'.':'Zoea monitoring this week contained counts but no stage observations, so larval development could not be assessed.');
+    var rt=zk.filter(function(id){return Z[id].slope!=null}).sort(function(a,b){return Z[b].slope-Z[a].slope});
+    var devTxt='; published rearing at about 28\u201330 \u00b0C took 8.5 to 14 days from zoea 1 to megalopa'+cite(2,3,7);
+    if(rt.length>1){
+      var top=rt[0],bot=rt[rt.length-1],tT=T.filter(function(x){return x.id===top})[0],tB=T.filter(function(x){return x.id===bot})[0];
+      var fol=(tT&&tB)?(tT.av>=tB.av):null;
+      p5.push('Larvae advanced about '+stg(Z[top].slope)+' per day in '+SH[top]+' compared with '+stg(Z[bot].slope)+' per day in '+SH[bot]+(fol===true?', as expected because temperature is the main driver of larval development rate'+cite(8):fol===false?', which does not follow the temperature order, so feeding, density or cannibalism may be affecting development':'')+devTxt+'.');
+    }else if(rt.length===1){p5.push('Larvae in '+SH[rt[0]]+' advanced about '+stg(Z[rt[0]].slope)+' per day'+devTxt+'.')}
+    else{p5.push('More than one sampling day is needed to estimate how fast the larvae are developing'+devTxt+'.')}
+    var zs=zk.filter(function(id){return Z[id].survLast!=null}).sort(function(a,b){return Z[b].survLast-Z[a].survLast});
+    if(zs.length){
+      p5.push('Survival estimated from the sub-sample counts ended the week at '+joinL(zs.map(function(id){return SH[id]+' '+(Math.round(Z[id].survLast*10)/10)+'%'}))+'; these are sampling estimates, so gaps of a few percentage points are within counting error, and published survival from zoea 1 to megalopa was about 4\u20137.5% at Guiuan'+cite(3)+'.');
+      if(rt.length>1&&zs.length>1&&rt[0]===zs[zs.length-1]&&Z[zs[0]].survLast-Z[rt[0]].survLast>=5)p5.push('The fastest-developing treatment also had the lowest estimated survival, a trade-off that fits thermal stress at the warm end of the tolerance range'+cite(5,11)+'.');
+      var colp=zs.filter(function(id){return Z[id].survLast<1});
+      if(colp.length)p5.push('Estimated survival below 1% in '+joinL(colp.map(function(id){return SH[id]}))+' points to a collapse of that group, so check water quality, feeding and cannibalism, which are the main causes of mortality in hatchery rearing'+cite(3)+'.');
+    }else{p5.push('No usable counts were entered, so survival could not be estimated from the monitoring sheet.')}
+  }
+  // comparison across treatments
+  if(all&&T.length>1){
+    var hi=T.slice().sort(function(a,b){return b.av-a.av}),dT=hi[0].av-hi[hi.length-1].av,cf=[];
+    if(SA.length>1&&spread(SA)>2)cf.push('salinity ('+pv('sal',spread(SA))+' ppt)');
+    if(PH.length>1&&spread(PH)>0.2)cf.push('pH ('+pv('ph',spread(PH))+')');
+    if(DO.length>1&&spread(DO)>0.7)cf.push('dissolved oxygen ('+pv('do',spread(DO))+' mg/L)');
+    p4.push('Mean temperature differed by '+pv('temp',dT)+' \u00b0C between the warmest treatment, '+SH[hi[0].id]+', and the coolest, '+SH[hi[hi.length-1].id]+'.');
+    p4.push(cf.length?'Treatment means also differed in '+joinL(cf)+', which could confound the temperature effect, so these parameters should be kept as similar as possible across tanks.':'Salinity, pH and oxygen were similar across treatments, so temperature is the main contrast this week.');
+  }
+  p4.push('This summary compares your readings with published ranges (references below) and is a decision aid, not a statistical analysis; most studies cited used short trials or other life stages, so check the original papers before acting on a single week.');
+  return [p1,p2,p3,p5,p4];
+}
+function renderNarr(nE,nD){
+  var el=$('narr');if(!el)return;
+  var paras=narrParas(NS,nE,nD).filter(function(p){return p.length}),count=0,txt=[];
+  paras.forEach(function(p){count+=p.length});
+  var html='<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><h3>Weekly interpretation</h3><button type="button" id="copynarr" class="noprint">Copy text</button></div>';
+  paras.forEach(function(p){html+='<p>'+esc(p.join(' '))+'</p>';txt.push(p.join(' '))});
+  html+='<p class="small">'+count+' sentences. Generated from your readings and a summary of published blue swimming crab (Portunus pelagicus) rearing studies, mostly read from abstracts and excerpts; not a systematic review.</p>';
+  html+='<ol class="refs">'+REFS.map(function(r){return '<li>'+esc(r)+'</li>'}).join('')+'</ol>';
+  el.innerHTML=html;
+  lastNarr=txt.join('\n\n')+'\n\nReferences:\n'+REFS.map(function(r,i){return '['+(i+1)+'] '+r}).join('\n');
+}
+
+$('narr').addEventListener('click',function(ev){
+  var t=ev.target;if(!t||t.id!=='copynarr')return;
+  var done=function(m){t.textContent=m;setTimeout(function(){t.textContent='Copy text'},2500)};
+  try{navigator.clipboard.writeText(lastNarr).then(function(){done('Copied')},function(){done('Copy failed')})}catch(e){done('Copy failed')}
+});
+var zrows={},zoutbox={},zLast=null,ZS={n:0,tr:{}};
+var ZSTG=['Z1','Z2','Z3','Z4','M','C1'],ZN=10;
+var ZCOL={Z1:'#8FD0E3',Z2:'#4FB3C8',Z3:'#E6B450',Z4:'#E88B3C',M:'#C95C4B',C1:'#8E6BB8'};
+function zSC(r){
+  if(r.sc&&r.sc.length===6)return r.sc.map(function(v){return +v||0});
+  return ZSTG.map(function(s){return (r.stages||[]).filter(function(v){return v===s}).length});
+}
+function sn(s){var i=ZSTG.indexOf(s);return i<0?null:i+1}
+function zId(date,tk){return 'z_'+date+'_'+tk}
+function zTanks(){var a=[];for(var t=1;t<=4;t++)for(var r=1;r<=3;r++)a.push('T'+t+'R'+r);return a}
+function zList(){return Object.keys(zrows).map(function(k){return zrows[k]}).filter(function(r){return !r.deleted})}
+function zCount(){return zList().length}
+function zpersist(){return Promise.all([idbSet('zrows',zrows),idbSet('zoutbox',zoutbox)]).catch(function(){syncMsg('This browser could not save data on the device. Download a backup often.',1)})}
+function zmsg(t,bad){var m=$('zmsg');m.textContent=t;m.className=bad?'err':'msg'}
+function zDoc(date,sd){if(!date||!sd)return '';var d=Math.round((parse(date)-parse(sd))/864e5);return d>=0?String(d):''}
+function buildZTable(){
+  var h='',i;
+  [0,1,2,3].forEach(function(ti){
+    var t=TR[ti];
+    h+='<div class="zgroup"><h3 class="zgt"><span class="sw" style="border-top:3px '+(t.dash?'dashed':'solid')+' '+t.col+'"></span>'+esc(SH[t.id])+'</h3><div class="zcards">';
+    [1,2,3].forEach(function(r){
+      var tk='T'+(ti+1)+'R'+r;
+      h+='<div class="zcard"><div class="zctop"><b>'+tk+'</b><span class="zob" id="zo-'+tk+'" title="Zoeae observed out of '+ZN+'"></span></div>';
+      h+='<label class="zf">Stocked in tank<input type="number" min="0" step="any" inputmode="numeric" id="zk-'+tk+'" aria-label="Stocked in '+tk+'"></label>';
+      h+='<div class="zlab">Sub-sample counts</div><div class="zrow5">';
+      for(i=0;i<5;i++)h+='<label>R'+(i+1)+'<input type="number" min="0" step="any" inputmode="numeric" id="zc-'+tk+'-'+i+'" aria-label="'+tk+' count R'+(i+1)+'"></label>';
+      h+='</div><div class="zres"><span>Sum <b id="zs-'+tk+'"></b></span><span>Est. <b id="ze-'+tk+'"></b></span><span>Survival <b id="zv-'+tk+'"></b></span></div>';
+      h+='<div class="zlab">Zoeae at each stage <span class="zlh">(of '+ZN+' observed)</span></div><div class="zrow6">';
+      ZSTG.forEach(function(sg,si){h+='<label>'+sg+'<input type="number" min="0" max="'+ZN+'" step="1" inputmode="numeric" id="zn-'+tk+'-'+si+'" aria-label="'+tk+' number of zoeae at '+sg+'"></label>'});
+      h+='</div><label class="zf" style="margin-top:10px">Remarks<input type="text" id="zrm-'+tk+'" aria-label="'+tk+' remarks"></label></div>';
+    });
+    h+='</div></div>';
+  });
+  $('ztable').innerHTML=h;
+}
+function zRecalc(){
+  var mult=parseFloat($('zmult').value)||0;
+  zTanks().forEach(function(tk){
+    var sum=0,n=0,i;
+    for(i=0;i<5;i++){var v=$('zc-'+tk+'-'+i).value.trim();if(v!==''&&isFinite(Number(v))){sum+=Number(v);n++}}
+    var tot=0,anyS=false;for(i=0;i<6;i++){var sv=$('zn-'+tk+'-'+i).value.trim();if(sv!==''&&isFinite(Number(sv))){tot+=Number(sv);anyS=true}}
+    var oc=$('zo-'+tk);oc.textContent=anyS?tot+' / '+ZN:'';oc.className='zob'+(!anyS?'':tot===ZN?' zok':' zwarn');
+    var st=parseFloat($('zk-'+tk).value),est=n&&mult>0?sum*mult:null;
+    $('zs-'+tk).textContent=n?String(sum):'';
+    $('ze-'+tk).textContent=est==null?'':String(Math.round(est));
+    $('zv-'+tk).textContent=est!=null&&st>0?(Math.round(est/st*1000)/10)+'%':'';
+  });
+  $('zdoc').value=zDoc($('zd').value,$('zsd').value);
+}
+function zLastStocked(tk){var best=null;zList().forEach(function(r){if(r.tank===tk&&r.stocked&&(!best||r.date>best.date))best=r});return best?best.stocked:''}
+function zLoadDay(){
+  var date=$('zd').value,recs={},first=null,i;
+  zList().forEach(function(r){if(r.date===date)recs[r.tank]=r});
+  zTanks().forEach(function(tk){
+    var r=recs[tk],tid=TR[+tk[1]-1].id,rep=+tk[3];
+    for(i=0;i<5;i++)$('zc-'+tk+'-'+i).value=r&&r.counts&&r.counts[i]!=null?String(r.counts[i]):'';
+    var scn=r?zSC(r):null;for(i=0;i<6;i++)$('zn-'+tk+'-'+i).value=scn&&scn[i]>0?String(scn[i]):'';
+    $('zrm-'+tk).value=r?(r.note||''):'';
+    $('zk-'+tk).value=String(r&&r.stocked?r.stocked:(inits[tid+'-'+rep]||zLastStocked(tk)||''));
+    if(r&&!first)first=r;
+  });
+  if(first){$('zrun').value=first.run||'';$('zsd').value=first.sd||'';$('zmult').value=first.mult||40}
+  else{var pr=load('wq-zrun',null);if(pr){$('zrun').value=pr.run||'';$('zsd').value=pr.sd||'';$('zmult').value=pr.mult||40}}
+  zRecalc();
+}
+function zSave(){
+  var date=$('zd').value;if(!date){zmsg('Choose a date.',1);return}
+  var mult=parseFloat($('zmult').value);if(!(mult>0)){zmsg('Enter a multiplier above 0 (for example 40).',1);return}
+  var run=$('zrun').value.trim(),sd=$('zsd').value||null,docs=zDoc(date,sd),doc=docs===''?null:+docs;
+  var list=[],cleared=0,initCh=false,bad=0,over=[],short=0;
+  zTanks().forEach(function(tk){
+    var counts=[],any=false,i,stages=[];
+    for(i=0;i<5;i++){var v=$('zc-'+tk+'-'+i).value.trim();if(v===''){counts.push(null)}else{var nv=Number(v);if(!isFinite(nv)||nv<0){bad++;counts.push(null)}else{counts.push(nv);any=true}}}
+    var sc=[],tot=0;for(i=0;i<6;i++){var sv=$('zn-'+tk+'-'+i).value.trim(),sn2=sv===''?0:Number(sv);if(!isFinite(sn2)||sn2<0||Math.round(sn2)!==sn2){bad++;sn2=0}sc.push(sn2);tot+=sn2;if(sn2>0)any=true}
+    if(tot>ZN)over.push(tk+' ('+tot+')');if(tot>0&&tot<ZN)short++;
+    var st=parseFloat($('zk-'+tk).value),note=$('zrm-'+tk).value.trim();if(note)any=true;
+    var id=zId(date,tk),ex=zrows[id];
+    if(!any){if(ex&&!ex.deleted){var c={};Object.keys(ex).forEach(function(k){c[k]=ex[k]});c.deleted=true;zrows[id]=c;zoutbox[id]=1;cleared++}return}
+    var tid=TR[+tk[1]-1].id,rep=+tk[3];
+    list.push({id:id,date:date,tank:tk,tr:tid,rep:rep,run:run,doc:doc,sd:sd,mult:mult,counts:counts,sc:sc,stages:[],stocked:st>0?st:null,note:note,deleted:false,by:(me&&me.email)||''});
+    if(st>0&&inits[tid+'-'+rep]!==st){inits[tid+'-'+rep]=st;initCh=true}
+  });
+  if(bad){zmsg('Counts and stage numbers must be whole numbers of 0 or more.',1);return}
+  if(over.length){zmsg('More than '+ZN+' zoeae recorded in '+over.join(', ')+'. Observe '+ZN+' zoeae per tank and make the stage numbers add up to '+ZN+'.',1);return}
+  list.forEach(function(r){zrows[r.id]=r;zoutbox[r.id]=1});
+  if(initCh)saveSettings();
+  save('wq-zrun',{run:run,sd:sd,mult:mult});
+  zpersist();ui();scheduleSync();
+  ws=monday(parse(date));render();
+  zmsg('Saved '+list.length+' tank'+(list.length===1?'':'s')+' for '+date+(cleared?'; cleared '+cleared+' emptied row'+(cleared===1?'':'s'):'')+'.'+(short?' '+short+' tank'+(short===1?' has':'s have')+' fewer than '+ZN+' zoeae recorded.':''));
+}
+function toZRow(r){return{id:r.id,date:r.date,tank:r.tank,tr:r.tr,rep:r.rep,run:r.run||'',doc:r.doc==null?null:r.doc,sd:r.sd||null,mult:r.mult||40,counts:r.counts||[],stages:r.stages||[],sc:r.sc||[],stocked:r.stocked==null?null:r.stocked,note:r.note||'',deleted:!!r.deleted}}
+function fromZRow(x){return{id:x.id,date:x.date,tank:x.tank,tr:x.tr,rep:x.rep,run:x.run||'',doc:x.doc,sd:x.sd||null,mult:x.mult||40,counts:x.counts||[],stages:x.stages||[],sc:x.sc||[],stocked:x.stocked,note:x.note||'',deleted:!!x.deleted,by:x.by_email||''}}
+async function syncZoea(){
+  try{
+    var ids=Object.keys(zoutbox),i,part,r;
+    for(i=0;i<ids.length;i+=200){
+      part=ids.slice(i,i+200);
+      r=await sb.from('zoea_monitoring').upsert(part.map(function(id){return toZRow(zrows[id])}),{onConflict:'id'});
+      if(r.error)throw r.error;
+      part.forEach(function(id){delete zoutbox[id]});
+      await idbSet('zoutbox',zoutbox);
+    }
+    var cursor=zLast||'1970-01-01T00:00:00+00:00',maxTs=zLast,guard=0,q,prev;
+    while(guard++<500){
+      q=await sb.from('zoea_monitoring').select('*').gte('updated_at',cursor).order('updated_at',{ascending:true}).order('id',{ascending:true}).limit(1000);
+      if(q.error)throw q.error;
+      q.data.forEach(function(x){if(!maxTs||x.updated_at>maxTs)maxTs=x.updated_at;if(zoutbox[x.id])return;zrows[x.id]=fromZRow(x)});
+      if(q.data.length<1000)break;
+      prev=cursor;cursor=q.data[q.data.length-1].updated_at;if(cursor===prev)break;
+    }
+    zLast=maxTs;await idbSet('zLast',zLast);await idbSet('zrows',zrows);
+  }catch(e){
+    if(/zoea_monitoring/.test((e&&e.message)||''))throw new Error('the zoea monitoring table in Supabase is missing or out of date; run the updated supabase-setup.sql once');
+    throw e;
+  }
+}
+function zoeaRows(){
+  var rows=[['Date','Run','Day of culture','Tank','Treatment','Stocked','Count R1','Count R2','Count R3','Count R4','Count R5','Sum of counts','Multiplier','Estimated count','Survival (%)','Z1','Z2','Z3','Z4','M (megalopa)','C1 (first crab)','Zoeae observed','Remarks']];
+  zList().sort(function(a,b){return (a.date+a.tank).localeCompare(b.date+b.tank)}).forEach(function(r){
+    var c=r.counts||[],sum=0,n=0,sc=zSC(r),tot=sc.reduce(function(a,b){return a+b},0);c.forEach(function(v){if(v!=null){sum+=v;n++}});
+    var est=n&&r.mult>0?sum*r.mult:'';
+    rows.push([r.date,r.run||'',r.doc==null?'':r.doc,r.tank,SH[r.tr]||r.tr,r.stocked==null?'':r.stocked,c[0]==null?'':c[0],c[1]==null?'':c[1],c[2]==null?'':c[2],c[3]==null?'':c[3],c[4]==null?'':c[4],n?sum:'',r.mult||'',est,est!==''&&r.stocked>0?Math.round(est/r.stocked*1000)/10:'',tot?sc[0]:'',tot?sc[1]:'',tot?sc[2]:'',tot?sc[3]:'',tot?sc[4]:'',tot?sc[5]:'',tot||'',r.note||'']);
+  });
+  return rows;
+}
+function mean(a){return a.reduce(function(x,y){return x+y},0)/a.length}
+function stackSvg(comp,tname){
+  var W=320,H=150,L=34,R=8,T0=8,B=22,n=7,bw=(W-L-R)/n*0.62,ph=H-T0-B;
+  var x=function(i){return L+(W-L-R)*(i+0.5)/n},y=function(v){return T0+ph*(1-v/100)};
+  var s='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Stage composition for '+esc(tname)+'">';
+  [0,50,100].forEach(function(v){s+='<line class="grid-l" x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'"/><text class="ax" x="'+(L-5)+'" y="'+(y(v)+3)+'" text-anchor="end">'+v+'%</text>'});
+  DN.forEach(function(d,i){s+='<text class="ax" x="'+x(i)+'" y="'+(H-6)+'" text-anchor="middle">'+d+'</text>'});
+  comp.forEach(function(c,i){if(!c.total)return;var base=0;ZSTG.forEach(function(st){if(!c[st])return;var hp=c[st]/c.total*100;s+='<rect x="'+(x(i)-bw/2)+'" y="'+y(base+hp)+'" width="'+bw+'" height="'+Math.max(0.5,y(base)-y(base+hp))+'" fill="'+ZCOL[st]+'"><title>'+DN[i]+' '+st+': '+Math.round(hp)+'% ('+c[st]+' of '+c.total+')</title></rect>';base+=hp})});
+  return s+'</svg>';
+}
+function renderZoea(days){
+  var el=$('zrep');if(!el)return;
+  var scope=view==='all'?TR:[tById(view)];
+  var recs=zList().filter(function(r){return days.indexOf(r.date)>-1&&(view==='all'||r.tr===view)});
+  ZS={n:recs.length,tr:{}};
+  var head='<h3 style="margin:20px 0 8px">Zoea stage monitoring</h3>';
+  if(!recs.length){el.innerHTML=zCount()?head+'<p class="note">No zoea monitoring records for this week.</p>':'';return}
+  var pL={k:'lsi',n:'Larval stage index',u:'',dec:2},pS={k:'zsurv',n:'Estimated survival',u:'%',dec:1},INF={min:-1e9,max:1e9};
+  var serL=[],serS=[],comps=[],trows='';
+  scope.forEach(function(t){
+    var rs=recs.filter(function(r){return r.tr===t.id}),lsi=[],sv=[],comp=[],estTank=[];
+    days.forEach(function(d,i){
+      var o={total:0};ZSTG.forEach(function(s){o[s]=0});comp.push(o);
+      var nums=[],svs=[],ests=[];
+      rs.filter(function(r){return r.date===d}).forEach(function(r){
+        var sc=zSC(r);ZSTG.forEach(function(s,si){var cn=sc[si]||0;if(cn>0){o[s]+=cn;o.total+=cn;for(var q=0;q<cn;q++)nums.push(si+1)}});
+        var sum=0,cnt=0;(r.counts||[]).forEach(function(v){if(v!=null){sum+=v;cnt++}});
+        if(cnt&&r.mult>0){ests.push(sum*r.mult);if(r.stocked>0)svs.push(sum*r.mult/r.stocked*100)}
+      });
+      lsi.push(nums.length?mean(nums):null);sv.push(svs.length?mean(svs):null);estTank.push(ests.length?mean(ests):null);
+    });
+    serL.push({t:{n:t.n},rg:INF,col:t.col,dash:t.dash,means:lsi});serS.push({t:{n:t.n},rg:INF,col:t.col,dash:t.dash,means:sv});
+    comps.push({t:t,comp:comp});
+    if(!rs.length)return;
+    var pts=[];lsi.forEach(function(v,i){if(v!=null)pts.push([i,v])});
+    var slope=null;if(pts.length>1){var mx=mean(pts.map(function(p){return p[0]})),my=mean(pts.map(function(p){return p[1]})),nu=0,de=0;pts.forEach(function(p){nu+=(p[0]-mx)*(p[1]-my);de+=(p[0]-mx)*(p[0]-mx)});if(de>0)slope=nu/de}
+    var li=-1;lsi.forEach(function(v,i){if(v!=null)li=i});
+    var dom=null,domPct=null,docL=null;
+    if(li>-1){var c=comp[li];ZSTG.forEach(function(s){if(c[s]&&(dom===null||c[s]>c[dom]))dom=s});domPct=dom?c[dom]/c.total*100:null;rs.forEach(function(r){if(r.date===days[li]&&r.doc!=null)docL=r.doc})}
+    var sl=-1;sv.forEach(function(v,i){if(v!=null)sl=i});
+    var svv=sv.filter(function(v){return v!=null});
+    ZS.tr[t.id]={n:rs.length,lsiFirst:pts.length?pts[0][1]:null,lsiLast:pts.length?pts[pts.length-1][1]:null,slope:slope,dom:dom,domPct:domPct,doc:docL,survLast:sl>-1?sv[sl]:null,survAvg:svv.length?mean(svv):null,estLast:sl>-1?estTank[sl]:null};
+    var z=ZS.tr[t.id];
+    trows+='<tr><td><span class="sw" style="border-top:3px '+(t.dash?'dashed':'solid')+' '+t.col+'"></span>'+esc(t.n)+'</td><td>'+rs.length+'</td><td>'+(dom?dom+' ('+Math.round(domPct)+'%)':'\u2013')+'</td><td>'+(z.lsiFirst==null?'\u2013':(Math.round(z.lsiFirst*100)/100)+' \u2192 '+(Math.round(z.lsiLast*100)/100))+'</td><td>'+(slope==null?'\u2013':(Math.round(slope*100)/100))+'</td><td>'+(z.survLast==null?'\u2013':(Math.round(z.survLast*10)/10)+'%')+'</td><td>'+(z.survAvg==null?'\u2013':(Math.round(z.survAvg*10)/10)+'%')+'</td></tr>';
+  });
+  var docBy={};recs.forEach(function(r){if(r.doc!=null&&docBy[r.date]==null)docBy[r.date]=r.doc});
+  var crow='';days.forEach(function(d,i){comps.forEach(function(c){var o=c.comp[i];if(!o.total)return;crow+='<tr><td>'+d.slice(5)+'</td><td>'+(docBy[d]!=null?docBy[d]:'\u2013')+'</td><td>'+esc(c.t.n)+'</td>'+ZSTG.map(function(s){return '<td>'+o[s]+'</td>'}).join('')+'<td><b>'+o.total+'</b></td></tr>'})});
+  var leg='<p style="margin:6px 0 10px">'+ZSTG.map(function(s){return '<span class="zl"><i style="background:'+ZCOL[s]+'"></i>'+(s==='M'?'M (megalopa)':s==='C1'?'C1 (first crab)':s)+'</span>'}).join('')+'</p>';
+  var h=head+'<p class="note" style="margin:0 0 10px">Stage index: Z1 = 1, Z2 = 2, Z3 = 3, Z4 = 4, megalopa = 5, first crab = 6. Survival is estimated as the sum of the sub-sample counts \u00d7 the multiplier \u00f7 the number stocked per tank.</p>';
+  h+='<div class="charts"><div><p class="ctitle">Larval stage index (mean of sampled zoeae)</p>'+chart(pL,serL,null,null)+'</div><div><p class="ctitle">Estimated survival (%)</p>'+chart(pS,serS,null,null)+'</div></div>';
+  h+='<p class="ctitle" style="margin:16px 0 0">Stage composition (% of sampled zoeae per day)</p>'+leg+'<div class="charts">'+comps.map(function(c){return '<div><p class="ctitle">'+esc(c.t.n)+'</p>'+stackSvg(c.comp,c.t.n)+'</div>'}).join('')+'</div>';
+  h+='<p class="ctitle" style="margin:16px 0 6px">Number of zoeae observed per stage (all tanks of a treatment; '+ZN+' zoeae per tank)</p><div class="scroll"><table class="mini"><thead><tr><th>Date</th><th>Day</th><th>Treatment</th>'+ZSTG.map(function(s){return '<th>'+s+'</th>'}).join('')+'<th>Total</th></tr></thead><tbody>'+crow+'</tbody></table></div>';
+  h+='<div class="scroll"><table class="mini" style="margin-top:14px"><thead><tr><th>Treatment</th><th>Tank-days</th><th>Dominant stage (latest)</th><th>Stage index, first \u2192 last</th><th>Stages per day</th><th>Est. survival (latest)</th><th>Est. survival (week mean)</th></tr></thead><tbody>'+trows+'</tbody></table></div>';
+  el.innerHTML=h;
+}
+buildZTable();
+$('zd').value=ymd(new Date());
+$('ztable').addEventListener('input',zRecalc);
+['zmult','zsd'].forEach(function(id){$(id).addEventListener('input',zRecalc)});
+$('zd').addEventListener('change',zLoadDay);
+$('zload').onclick=zLoadDay;
+$('zsave').onclick=zSave;
+$('zclear').onclick=function(){zTanks().forEach(function(tk){var i;for(i=0;i<5;i++)$('zc-'+tk+'-'+i).value='';for(i=0;i<6;i++)$('zn-'+tk+'-'+i).value='';$('zrm-'+tk).value=''});zRecalc();zmsg('Sheet cleared. Press Save to remove these records.')};
+$('zcsv').onclick=function(){
+  var q=function(s){s=String(s==null?'':s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+  dl('zoea-monitoring.csv','text/csv',zoeaRows().map(function(r){return r.map(q).join(',')}).join('\n'));
+};
+var VIEWS={
+ report:{t:'Weekly report',s:'Graphs, a written interpretation and zoea monitoring for the week.',w:1},
+ add:{t:'Add a reading',s:'Record water parameters for one tank and one session.'},
+ growth:{t:'Growth sampling',s:'Monthly sampling of growth parameters.'},
+ zoea:{t:'Daily zoea monitoring',s:'Sub-sample counts and the stages of the 10 zoeae observed in each tank.'},
+ readings:{t:'Readings',s:'Every reading saved for the week shown.',w:1},
+ 'import':{t:'Import & export',s:'Bring in your spreadsheet or download your data.'},
+ settings:{t:'Settings & sync',s:'Sign in to sync with your co-worker, and set target ranges.'}
+};
+var curView='report';
+function showView(v){
+  if(!VIEWS[v]||(v==='zoea'&&isGen())||(v==='growth'&&!isGen()))v='report';
+  [].slice.call(document.querySelectorAll('[data-view]')).forEach(function(el){var dc=el.getAttribute('data-com');el.hidden=el.getAttribute('data-view')!==v||(dc==='bsc'&&isGen())||(dc==='gen'&&!isGen())});
+  [].slice.call(document.querySelectorAll('#menu a')).forEach(function(a){if(a.getAttribute('data-nav')===v)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+  $('vtitle').textContent=VIEWS[v].t;$('vsub').textContent=vsubText(v);$('weekbar').hidden=!VIEWS[v].w;
+  curView=v;save('wq-view',v);
+  try{if(window.scrollTo)window.scrollTo(0,0)}catch(e){}
+}
+window.addEventListener('hashchange',function(){showView((location.hash||'').slice(1))});
+$('chip').onclick=function(){location.hash='#settings'};
+$('zsave2').onclick=zSave;
+/* ===================== multiple commodities (abalone, grouper, milkfish, spiny lobster) ===================== */
+var COMS=[{id:'bsc',n:'Blue swimming crab'},{id:'abalone',n:'Abalone'},{id:'grouper',n:'Grouper'},{id:'milkfish',n:'Milkfish'},{id:'lobster',n:'Spiny lobster'}];
+var COM=load('wq-com','bsc');if(!COMS.some(function(c){return c.id===COM}))COM='bsc';
+var gentries=[],grows={},goutbox={},gLast=null,gcfgAll=load('wq-gcfg',{});
+var GPAL=['#0B6E78','#D17A00','#C23B30','#2B6FD6','#7A4B9E','#2E8B57','#8A6D3B','#55606A'],GDASH=['','6 3','2 3','10 3 2 3','','6 3','2 3','10 3 2 3'];
+var GPARAM=[
+ {k:'temp',n:'Temperature',u:'\u00b0C',dec:1,step:0.1},
+ {k:'sal',n:'Salinity',u:'ppt',dec:1,step:0.1},
+ {k:'ph',n:'pH',u:'',dec:2,step:0.01},
+ {k:'do',n:'Dissolved oxygen',u:'mg/L',dec:2,step:0.1},
+ {k:'nh3',n:'Ammonia (TAN)',u:'mg/L',dec:3,step:0.001,opt:1},
+ {k:'no2',n:'Nitrite',u:'mg/L',dec:3,step:0.001,opt:1}
+];
+var GSHORT={temp:'Temp (\u00b0C)',sal:'Salinity (ppt)',ph:'pH',do:'DO (mg/L)',nh3:'Ammonia (mg/L)',no2:'Nitrite (mg/L)'};
+var GDEF={
+ abalone:{ul:'Tank',units:['Tank 1','Tank 2','Tank 3'],rg:{temp:[26,32],sal:[28,35],ph:[7.8,8.4],do:[5,14],nh3:[0,0.1],no2:[0,0.1]},extra:{nh3:0,no2:0},
+  gp:[{k:'len',n:'Shell length',u:'mm',dec:1},{k:'wid',n:'Shell width',u:'mm',dec:1},{k:'wt',n:'Total weight',u:'g',dec:2}],
+  ref:['Maquirang JRH, Caturao RD, Maquirang JH, Pedroso FL (2013). Survival and settlement rates of Haliotis asinina larvae at different salinity levels. IAMURE International Journal of Ecology and Conservation 8(1): 81-95. (28 and 32 ppt were the best salinities for larval survival and settlement.)',
+       'Study on early developmental stages of donkey ear abalone, Haliotis asinina Linnaeus, 1758. Asian Journal of Agriculture and Development (SEARCA abstract). (Eggs hatched best at 29 \u00b0C; larval survival to the creeping stage was best at 26 \u00b0C and 35 ppt.)',
+       'Madrones-Ladja JA, Polohan BB (2001). The effect of stocking density, temperature and light on the early larval survival of the abalone Haliotis asinina Linne. Phuket Marine Biological Center Special Publication 25(1): 207-210. (Ambient 28-30 \u00b0C used as the high temperature level.)',
+       'Research Square preprint rs-1603391 on H. asinina fed mixed diets. (Survival rose with temperature across 26-33 \u00b0C; low to mid 30s \u00b0C may be optimum for survival.)']},
+ grouper:{ul:'Tank',units:['Tank 1','Tank 2','Tank 3'],rg:{temp:[26,32],sal:[25,33],ph:[7.5,8.5],do:[5,14],nh3:[0,0.1],no2:[0,0.1]},extra:{nh3:0,no2:0},
+  gp:[{k:'len',n:'Total length',u:'cm',dec:1},{k:'wt',n:'Body weight',u:'g',dec:1}],
+  ref:['Loveson Edward (2024). CMFRI Training Manual Series No. 37. (Optimum temperature for most tropical marine fish 27-31 \u00b0C; pH 7.0-8.5; dissolved oxygen preferably 5 ppm or more; grouper salinity range 10-33 ppt with an optimum of 20 ppt.)',
+       'Indonesian National Standard SNI (2011), as cited in the Journal of Fish Health, University of Mataram. (Optimal salinity 28-33 ppt and temperature 28-32 \u00b0C for grouper hatchery and rearing.)',
+       'Utami and Rizki (2022), as cited in Jurnal Perairan, University of Mataram. (Grouper larvae: 26-30 \u00b0C, 28-32 ppt, dissolved oxygen above 5 mg/L.)']},
+ milkfish:{ul:'Pond',units:['Pond 1','Pond 2','Pond 3'],rg:{temp:[26,32],sal:[20,32],ph:[7.5,8.3],do:[4,14],nh3:[0,0.02],no2:[0,0.01]},extra:{nh3:0,no2:0},
+  gp:[{k:'len',n:'Total length',u:'cm',dec:1},{k:'wt',n:'Body weight',u:'g',dec:1}],
+  ref:['Reyes O, Ayson EG, Eullaran B (2016). Seed production of milkfish Chanos chanos Forsskal. SEAFDEC Aquaculture Department, Tigbauan, Iloilo, Philippines. (Cage culture: pH 7.5-8.3, dissolved oxygen 4-8 mg/L, salinity 20-32 ppt, 26-32 \u00b0C, ammonia-N below 0.02 mg/L. Larval rearing: 28-32 \u00b0C, 28-33 ppt, dissolved oxygen 4 mg/L or more, ammonia below 0.02 and nitrite below 0.01 mg/L.)',
+       'Production of milk fish, Package of practices for aquaculture, Vikaspedia (India). (Nursery and grow-out ponds: salinity 10-30 ppt, 26-30 \u00b0C, pH 7.5-8.5, dissolved oxygen above 4.5 ppm.)']},
+ lobster:{ul:'Tank',units:['Tank 1','Tank 2','Tank 3'],rg:{temp:[25,30],sal:[30,38],ph:[7.8,8.4],do:[5,14],nh3:[0,0.1],no2:[0,0.1]},extra:{nh3:0,no2:0},
+  gp:[{k:'cl',n:'Carapace length',u:'mm',dec:1},{k:'wt',n:'Body weight',u:'g',dec:1}],
+  ref:['Lobster farming in India, Vikaspedia (based on Indian lobster culture information). (Culture water: 25-30 \u00b0C, dissolved oxygen at least 70% and preferably above 80% saturation, salinity 30-38 ppt, pH 7.8-8.4.)',
+       'Vidya K, Joseph S (2012). Effect of salinity on growth and survival of juvenile Indian spiny lobster, Panulirus homarus. Indian Journal of Fisheries 59(1): 113-118. (Salinities of 20-35 ppt tested at about 28 \u00b0C and pH 7.9.)',
+       'Rao GS, George RM, Anil MK, Saleela KN, Jasmine S, Kingsly HJ, Rao GH (2010). Cage culture of the spiny lobster Panulirus homarus at Vizhinjam, Trivandrum. (Juveniles grew from 114.8 to 225.95 g in 135 days, 75% survival in the cage, about 0.82 g/day.)']}
+};
+function comName(id){for(var i=0;i<COMS.length;i++)if(COMS[i].id===id)return COMS[i].n;return id}
+function isGen(){return !!COM&&COM!=='bsc'}
+function gcfg(c){
+  var d=GDEF[c],u=gcfgAll[c]||{},cf={units:(u.units&&u.units.length?u.units:d.units),rg:{},extra:{}};
+  GPARAM.forEach(function(p){var r=u.rg&&u.rg[p.k],df=d.rg[p.k]||[0,0.1];cf.rg[p.k]={min:r&&isFinite(r.min)?+r.min:df[0],max:r&&isFinite(r.max)?+r.max:df[1]};if(p.opt)cf.extra[p.k]=u.extra&&u.extra[p.k]!=null?!!u.extra[p.k]:!!d.extra[p.k]});
+  return cf;
+}
+function gparams(c){var cf=gcfg(c);return GPARAM.filter(function(p){return !p.opt||cf.extra[p.k]}).map(function(p){var o={};Object.keys(p).forEach(function(k){o[k]=p[k]});o.min=cf.rg[p.k].min;o.max=cf.rg[p.k].max;return o})}
+function gunits(c){return gcfg(c).units.map(function(n,i){return{id:n,n:n,col:GPAL[i%GPAL.length],dash:GDASH[i%GDASH.length]}})}
+function slug(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')}
+function gmsg(t,bad){var m=$('gmsg');m.textContent=t;m.className=bad?'err':'msg'}
+function putGenEntries(list){
+  var keys={};list.forEach(function(e){keys[e.com+'|'+e.unit+'|'+e.date+'|'+e.sess]=1});
+  var rep=0;
+  Object.keys(rows).forEach(function(k){var r=rows[k];if(!r.deleted&&r.com&&r.com!=='bsc'&&keys[r.com+'|'+r.unit+'|'+r.date+'|'+r.sess]){r.deleted=true;outbox[r.id]=1;rep++}});
+  list.forEach(function(e){if(!e.by&&me)e.by=me.email;e.deleted=false;rows[e.id]=e;outbox[e.id]=1});
+  commit();return rep;
+}
+function buildGenForm(){
+  var cf=gcfg(COM),ps=gparams(COM),ul=GDEF[COM]?GDEF[COM].ul:'Unit',h='';
+  $('gunitlbl').textContent=ul;
+  $('gu').innerHTML=cf.units.map(function(u){return '<option value="'+esc(u)+'">'+esc(u)+'</option>'}).join('');
+  ps.forEach(function(p){h+='<label>'+p.n+' <small>'+(p.u||'')+'</small><input type="text" inputmode="decimal" autocomplete="off" id="gin-'+p.k+'" placeholder="e.g. '+(p.k==='temp'?'28.5':p.k==='sal'?'33':p.k==='ph'?'8.1':p.k==='do'?'5.6':'0.02')+'"></label>'});
+  $('gpin').innerHTML=h;
+  $('gs').value=new Date().getHours()<12?'AM':'PM';
+  var gl=$('grlabel'),gp=GDEF[COM]?GDEF[COM].gp:[];
+  if(gl)gl.textContent='Measurements: one animal per line ('+gp.map(function(p){return p.n+' '+p.u}).join(', ')+')';
+  if($('grtext'))$('grtext').placeholder=gp.map(function(p,i){return i===0?'e.g. '+(p.u==='mm'?'42.1':'12.4'):''}).join(' ').trim()+' ...';
+  var gu=$('gru');if(gu)gu.innerHTML=cf.units.map(function(u){return '<option value="'+esc(u)+'">'+esc(u)+'</option>'}).join('');
+}
+function gSubmit(){
+  var date=$('gd').value,unit=$('gu').value,sess=$('gs').value;
+  if(!date){gmsg('Choose a date.',1);return}
+  if(!unit){gmsg('Choose a '+GDEF[COM].ul.toLowerCase()+'.',1);return}
+  var ps=gparams(COM),raw={},vals={},any=false,bad=false;
+  ps.forEach(function(p){var s=$('gin-'+p.k).value.trim();if(!s)return;var a=s.split(/[\s,;]+/).map(Number);if(a.some(function(n){return !isFinite(n)})){bad=true;return}raw[p.k]=a;vals[p.k]=mean(a);any=true});
+  if(bad){gmsg('Use numbers only, separated by spaces or commas.',1);return}
+  if(!any){gmsg('Enter at least one value.',1);return}
+  var e={id:Date.now()+''+Math.floor(Math.random()*1000),date:date,time:$('gt').value||'',com:COM,unit:unit,sess:sess,vals:vals,raw:raw,note:$('gnote').value.trim()};
+  var rp=putGenEntries([e]);
+  ps.forEach(function(p){$('gin-'+p.k).value=''});$('gnote').value='';$('gt').value=now();
+  ws=monday(parse(date));
+  gmsg(sess+' reading saved for '+unit+(rp?' (replaced the earlier '+sess+' reading for that date)':'')+'.');render();
+}
+
+function pn(p){return p.k==='ph'?'pH':p.n.toLowerCase()}
+function rngText(p){return (p.k==='do'&&p.max>=14)?'\u2265 '+fx(p,p.min)+(p.u?' '+p.u:''):fx(p,p.min)+'\u2013'+fx(p,p.max)+(p.u?' '+p.u:'')}
+function renderGen(){
+  lastSummary=[];
+  var days=[],i;for(i=0;i<7;i++){var dd=new Date(ws);dd.setDate(dd.getDate()+i);days.push(ymd(dd))}
+  var a=parse(days[0]),b=parse(days[6]),o={month:'short',day:'numeric'};
+  $('weeklbl').textContent=a.toLocaleDateString(undefined,o)+' \u2013 '+b.toLocaleDateString(undefined,o)+', '+b.getFullYear();
+  if($('pweek'))$('pweek').textContent=' \u2013 '+comName(COM)+' \u2013 '+$('weeklbl').textContent;
+  dataStat();
+  var ps=gparams(COM),units=gunits(COM),ul=GDEF[COM].ul;
+  var all=gentries.filter(function(e){return e.com===COM&&days.indexOf(e.date)>-1});
+  all.forEach(function(e){if(!units.some(function(u){return u.id===e.unit})){var k=units.length;units.push({id:e.unit,n:e.unit,col:GPAL[k%GPAL.length],dash:GDASH[k%GDASH.length]})}});
+  if(view!=='all'&&!units.some(function(u){return u.id===view}))view='all';
+  var scope=view==='all'?units:units.filter(function(u){return u.id===view});
+  $('tabs').innerHTML=[{id:'all',n:'All '+ul.toLowerCase()+'s'}].concat(units).map(function(u){return '<button type="button" data-v="'+esc(u.id)+'" role="tab" aria-selected="'+(view===u.id)+'" class="'+(view===u.id?'on':'')+'">'+esc(u.n)+'</button>'}).join('');
+  var es=all.filter(function(e){return view==='all'||e.unit===view}).sort(function(x,y){return (x.date+x.unit+x.sess).localeCompare(y.date+y.unit+y.sess)});
+  var logged={},uw={};es.forEach(function(e){logged[e.date]=1;uw[e.unit]=1});
+  var nDays=Object.keys(logged).length,nUn=Object.keys(uw).length,clean=0,attn=[],cards='',NSG={};
+  ps.forEach(function(p){
+    var rg={min:p.min,max:p.max};
+    var ser=scope.map(function(u){
+      var vals=[];es.forEach(function(e){if(e.unit!==u.id||e.vals[p.k]==null)return;var rw=e.raw&&e.raw[p.k];if(rw&&rw.length)rw.forEach(function(v){vals.push({d:e.date,v:v,s:e.sess})});else vals.push({d:e.date,v:e.vals[p.k],s:e.sess})});
+      var out=vals.filter(function(x){return x.v<rg.min||x.v>rg.max});
+      var dm=function(sn){return days.map(function(d1){var r=vals.filter(function(x){return x.d===d1&&(!sn||x.s===sn)});return r.length?mean(r.map(function(x){return x.v})):null})};
+      var av=vals.map(function(x){return x.v}),am=vals.filter(function(x){return x.s==='AM'}).map(function(x){return x.v}),pm=vals.filter(function(x){return x.s==='PM'}).map(function(x){return x.v});
+      return{t:u,rg:rg,vals:vals,out:out,means:dm(null),mAM:dm('AM'),mPM:dm('PM'),col:u.col,dash:u.dash,av:av.length?mean(av):null,aAM:am.length?mean(am):null,aPM:pm.length?mean(pm):null,mn:av.length?Math.min.apply(null,av):null,mx:av.length?Math.max.apply(null,av):null};
+    });
+    var has=ser.filter(function(s){return s.vals.length}),totOut=0,totN=0;
+    ser.forEach(function(s){totOut+=s.out.length;totN+=s.vals.length;if(s.out.length)attn.push(p.n+' \u2013 '+s.t.n+' ('+s.out.length+' of '+s.vals.length+')')});
+    if(has.length&&!totOut)clean++;
+    var rngTxt=rngText(p);
+    var chip=!totN?'<span class="chip">No data</span>':totOut?'<span class="chip bad">'+totOut+' of '+totN+' out of range</span>':'<span class="chip ok">In range</span>';
+    has.forEach(function(s){lastSummary.push([$('weeklbl').textContent,p.n+(p.u?' ('+p.u+')':''),s.t.n,fx(p,s.av),s.aAM==null?'':fx(p,s.aAM),s.aPM==null?'':fx(p,s.aPM),fx(p,s.mn),fx(p,s.mx),s.out.length,s.vals.length])});
+    NSG[p.k]=has.map(function(s){return{id:s.t.id,name:s.t.n,n:s.vals.length,av:s.av,aAM:s.aAM,aPM:s.aPM,mn:s.mn,mx:s.mx,out:s.out.length}});
+    var mini=has.length?'<table class="mini"><thead><tr><th>'+ul+'</th><th>Mean</th><th>AM mean</th><th>PM mean</th><th>Min\u2013max</th><th class="noprint">Out</th></tr></thead><tbody>'+has.map(function(s){return '<tr><td><span class="sw" style="border-top:3px '+(s.dash?'dashed':'solid')+' '+s.col+'"></span>'+esc(s.t.n)+'</td><td>'+fx(p,s.av)+'</td><td>'+(s.aAM==null?'\u2013':fx(p,s.aAM))+'</td><td>'+(s.aPM==null?'\u2013':fx(p,s.aPM))+'</td><td>'+fx(p,s.mn)+'\u2013'+fx(p,s.mx)+'</td><td class="'+(s.out.length?'bad ':'')+'noprint">'+s.out.length+' of '+s.vals.length+'</td></tr>'}).join('')+'</tbody></table>':'';
+    cards+='<article class="pcard"><div class="phead"><h3>'+esc(p.n)+'<small>Target '+rngTxt+'</small></h3>'+chip+'</div>'+charts(p,ser,rg)+mini+'</article>';
+  });
+  $('stats').innerHTML='<div class="stat"><b>'+es.length+'</b><span>readings logged</span></div><div class="stat"><b>'+nDays+' of 7</b><span>days with data</span></div><div class="stat"><b>'+nUn+' of '+units.length+'</b><span>'+ul.toLowerCase()+'s with data</span></div><div class="stat"><b>'+clean+' of '+ps.length+'</b><span>parameters in range'+(view==='all'?' for every '+ul.toLowerCase():'')+'</span></div>';
+  var at=$('attn');
+  if(!es.length){at.className='attn';at.textContent='No readings for this view yet. Add one on the Add reading page to start the report.'}
+  else if(attn.length){at.className='attn';at.textContent='Needs attention: '+attn.join('; ')+'.'}
+  else{at.className='attn good';at.textContent='Every recorded parameter stayed within its target range this week.'}
+  $('cards').innerHTML=cards;
+  $('zrep').innerHTML=growthReport(scope);
+  renderGenNarr(NSG,ps,es.length,nDays,nUn);
+  genTable(es,ps,days);
+}
+function genTable(es,ps,days){
+  if(!es.length){$('tbl').innerHTML='<p class="empty">Nothing logged for this view.</p>';return}
+  var h='<table class="rt"><thead><tr><th>Date</th><th>'+GDEF[COM].ul+'</th>'+ps.map(function(p){return '<th>'+GSHORT[p.k]+'</th>'}).join('')+'<th>Notes</th><th></th></tr></thead><tbody>';
+  es.forEach(function(e){
+    h+='<tr><td>'+DN[days.indexOf(e.date)]+' '+e.date.slice(5)+'<small>'+e.sess+(e.time?' \u00b7 '+esc(e.time):'')+'</small></td><td><b>'+esc(e.unit)+'</b></td>';
+    ps.forEach(function(p){var v=e.vals[p.k];if(v==null){h+='<td>\u2013</td>'}else{h+='<td'+(v<p.min||v>p.max?' class="bad"':'')+' title="'+(e.raw&&e.raw[p.k]?e.raw[p.k].join(', '):'')+'">'+fx(p,v)+'</td>'}});
+    var by=(e.by||'').split('@')[0];
+    h+='<td class="n">'+esc(e.note)+(by?'<small>by '+esc(by)+'</small>':'')+'</td><td>'+(canWrite?'<button data-id="'+e.id+'">Delete</button>':'')+'</td></tr>';
+  });
+  $('tbl').innerHTML=h+'</tbody></table>';
+}
+function genNarr(S,ps,nE,nD,nU){
+  var wk=$('weeklbl').textContent,cn=comName(COM),ul=GDEF[COM].ul.toLowerCase();
+  var rngAll=ps.map(function(p){return pn(p)+' '+rngText(p)}).join(', ');
+  var growthRecs=gList().filter(function(r){return r.com===COM});
+  if(!nE){return [[
+    'No readings were recorded for '+cn+' in '+wk+', so the water conditions could not be assessed this week.',
+    'The target ranges currently set for '+cn+' are '+rngAll+'.',
+    'These starting values come from published culture guidelines (listed below) and differ by life stage and rearing system, so adjust them in Settings to match your own protocol.',
+    'Record the water parameters twice a day (AM and PM) on the Add reading page, or import them with the CSV template, and the report will compare each '+ul+' with these ranges.',
+    'Monthly growth sampling is entered on the Growth page and appears at the bottom of the report.'
+  ]]}
+  var p1=[],p2=[],p3=[],p4=[],bad={},fl=function(k,dir,name){(bad[k]=bad[k]||{hi:[],lo:[]})[dir].push(name)};
+  p1.push('For '+wk+', '+nE+' reading record'+(nE===1?'':'s')+' for '+cn+' from '+nU+' '+ul+(nU===1?'':'s')+' on '+nD+' of 7 days '+(nE===1?'was':'were')+' compared with the target ranges set for this commodity (see Settings).');
+  ps.forEach(function(p){
+    var arr=S[p.k]||[];
+    if(!arr.length){p2.push('No '+pn(p)+' readings were recorded this week.');return}
+    var inn=[],hi=[],lo=[],rg=rngText(p);
+    arr.forEach(function(x){var t=x.name+' ('+fx(p,x.av)+(p.u?' '+p.u:'')+')';if(x.av>p.max){hi.push(t);fl(p.k,'hi',x.name)}else if(x.av<p.min){lo.push(t);fl(p.k,'lo',x.name)}else inn.push(t)});
+    var segs=[];
+    if(inn.length)segs.push('in '+joinL(inn)+' it was within the '+rg+' target');
+    if(hi.length)segs.push('in '+joinL(hi)+' it was above the target');
+    if(lo.length)segs.push('in '+joinL(lo)+' it was below the target');
+    p2.push('Mean '+pn(p)+': '+segs.join('; ')+'.');
+  });
+  var T=S.temp||[],sw=[];T.forEach(function(x){if(x.aAM!=null&&x.aPM!=null&&Math.abs(x.aPM-x.aAM)>=1.5)sw.push(x.name)});
+  if(sw.length)p2.push('The PM temperature differed from the AM temperature by 1.5 \u00b0C or more in '+joinL(sw)+', a daily swing that adds stress, so heating, cooling and shading should be checked.');
+  var D=S.do||[],dw=[];D.forEach(function(x){if(x.aAM!=null&&x.aPM!=null&&x.aAM-x.aPM>=0.5)dw.push(x.name)});
+  if(dw.length)p2.push('Dissolved oxygen was at least 0.5 mg/L lower in the PM readings in '+joinL(dw)+', which fits rising oxygen demand and warmer water holding less oxygen through the day.');
+  var H=S.ph||[],pw=[];H.forEach(function(x){if(x.aAM!=null&&x.aPM!=null&&Math.abs(x.aPM-x.aAM)>=0.2)pw.push(x.name)});
+  if(pw.length)p2.push('pH moved by 0.2 or more between the AM and PM readings in '+joinL(pw)+', and sudden pH changes are stressful.');
+  var keys=Object.keys(bad);
+  if(!keys.length){p3.push('Overall, every measured parameter stayed within its target range, so any change in growth or survival is more likely to relate to feeding, stocking density or disease than to water quality.')}
+  else{
+    var eff=[];
+    if(bad.temp&&bad.temp.hi.length)eff.push('Temperatures above the target raise metabolic oxygen demand while lowering oxygen solubility, which can reduce feeding and growth and increase disease risk.');
+    if(bad.temp&&bad.temp.lo.length)eff.push('Temperatures below the target slow metabolism, feeding and growth.');
+    if(bad.sal)eff.push('Salinity outside the tolerated range forces extra osmoregulatory effort and can reduce growth and survival.');
+    if(bad.ph)eff.push('pH outside the target range stresses the animals and, when high, makes ammonia more toxic.');
+    if(bad.do&&bad.do.lo.length)eff.push('Low dissolved oxygen reduces feeding and growth and, if prolonged, causes mortality, so aeration, stocking density and feeding should be reviewed.');
+    if(bad.nh3||bad.no2)eff.push('Ammonia and nitrite are toxic to aquatic animals, so water exchange and biofilter performance should be checked.');
+    var names=keys.map(function(k){var q=ps.filter(function(p){return p.k===k})[0];return q?pn(q):k});
+    p3.push('Overall, '+joinL(names)+' departed from the target range in at least one '+ul+' this week.');
+    eff.forEach(function(t){p3.push(t)});
+    p3.push('Correct any deviating parameter gradually, because sudden changes are themselves stressful.');
+  }
+  var gp=GDEF[COM].gp;
+  if(growthRecs.length){
+    var byU={};growthRecs.forEach(function(r){(byU[r.unit]=byU[r.unit]||[]).push(r)});
+    var us=Object.keys(byU),lat=[];us.forEach(function(u){var arr=byU[u].sort(function(x,y){return x.date<y.date?-1:1});lat.push({u:u,r:arr[arr.length-1],pr:arr.length>1?arr[arr.length-2]:null})});
+    lat.sort(function(x,y){return x.r.date<y.r.date?1:-1});
+    var L=lat[0],s=gStats(L.r,gp);
+    p4.push('The latest monthly growth sampling was on '+L.r.date+' in '+L.u+' ('+(s.n||L.r.n)+' animals): '+gp.map(function(q,j){return s.st[j]?'mean '+q.n.toLowerCase()+' '+fx(q,s.st[j].mean)+' '+q.u:''}).filter(Boolean).join(' and ')+'.');
+    if(L.pr){
+      var s0=gStats(L.pr,gp),dd=Math.round((parse(L.r.date)-parse(L.pr.date))/864e5),wi=-1;gp.forEach(function(q,j){if(q.k==='wt')wi=j});
+      if(dd>0&&wi>-1&&s.st[wi]&&s0.st[wi]){
+        var adg=(s.st[wi].mean-s0.st[wi].mean)/dd,sgr=(Math.log(s.st[wi].mean)-Math.log(s0.st[wi].mean))/dd*100;
+        p4.push('Over the '+dd+' days since the previous sampling, mean weight changed by '+(Math.round(adg*100)/100)+' g per day (specific growth rate '+(Math.round(sgr*100)/100)+'% per day)'+(COM==='lobster'?', compared with about 0.82 g per day for juvenile P. homarus in cage culture [3]':'')+'.');
+      }else if(dd>0){p4.push('The previous sampling was '+dd+' days earlier, so growth rates are shown in the growth table below.')}
+    }
+    var dueL=ymd(new Date(parse(L.r.date).getTime()+30*864e5));
+    var overdue=lat.filter(function(x){return ymd(new Date(parse(x.r.date).getTime()+30*864e5))<ymd(new Date())});
+    p4.push(overdue.length?'Monthly sampling is overdue for '+joinL(overdue.map(function(x){return x.u}))+', so the next sampling should be scheduled soon.':'The next monthly sampling is due about '+dueL+'.');
+  }else{p4.push('No monthly growth sampling has been saved yet; enter one on the Growth page so growth rates can be compared from month to month.')}
+  var fin=['The ranges used here are starting values from published guidelines for '+cn+' (listed below); they vary with life stage and rearing system, so treat this summary as a decision aid and adjust the ranges in Settings.'];
+  return [p1,p2,p3,p4,fin].filter(function(x){return x.length});
+}
+function renderGenNarr(S,ps,nE,nD,nU){
+  var el=$('narr');if(!el)return;
+  var refs=GDEF[COM].ref,paras=genNarr(S,ps,nE,nD,nU),count=0,txt=[];
+  paras.forEach(function(p){count+=p.length});
+  var html='<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><h3>Weekly interpretation</h3><button type="button" id="copynarr" class="noprint">Copy text</button></div>';
+  paras.forEach(function(p){html+='<p>'+esc(p.join(' '))+'</p>';txt.push(p.join(' '))});
+  html+='<p class="small">'+count+' sentences. Generated from your readings and the target ranges set for '+esc(comName(COM))+'. The starting ranges were compiled from the published sources below, mostly from abstracts and excerpts; they differ by life stage and system. Not a systematic review.</p>';
+  html+='<p class="small" style="margin-bottom:0">Sources for the starting ranges:</p><ol class="refs">'+refs.map(function(r){return '<li>'+esc(r)+'</li>'}).join('')+'</ol>';
+  el.innerHTML=html;
+  lastNarr=txt.join('\n\n')+'\n\nSources:\n'+refs.map(function(r,i){return '['+(i+1)+'] '+r}).join('\n');
+}
+
+/* ---------- growth sampling (monthly) ---------- */
+function gList(){return Object.keys(grows).map(function(k){return grows[k]}).filter(function(r){return !r.deleted})}
+function gpersist(){return Promise.all([idbSet('grows',grows),idbSet('goutbox',goutbox)]).catch(function(){})}
+function toGRow(r){return{id:r.id,com:r.com,unit:r.unit,date:r.date,rows:r.rows||[],n:r.n||0,alive:r.alive==null?null:r.alive,init:r.init==null?null:r.init,note:r.note||'',deleted:!!r.deleted}}
+function fromGRow(x){return{id:x.id,com:x.com,unit:x.unit,date:x.date,rows:x.rows||[],n:x.n||0,alive:x.alive,init:x.init,note:x.note||'',by:x.by_email||'',deleted:!!x.deleted}}
+async function syncGrowth(){
+  try{
+    var ids=Object.keys(goutbox),i,part,r;
+    for(i=0;i<ids.length;i+=100){
+      part=ids.slice(i,i+100);
+      r=await sb.from('growth_samples').upsert(part.map(function(id){return toGRow(grows[id])}),{onConflict:'id'});
+      if(r.error)throw r.error;
+      part.forEach(function(id){delete goutbox[id]});
+      await idbSet('goutbox',goutbox);
+    }
+    var cursor=gLast||'1970-01-01T00:00:00+00:00',maxTs=gLast,guard=0,q,prev;
+    while(guard++<500){
+      q=await sb.from('growth_samples').select('*').gte('updated_at',cursor).order('updated_at',{ascending:true}).order('id',{ascending:true}).limit(500);
+      if(q.error)throw q.error;
+      q.data.forEach(function(x){if(!maxTs||x.updated_at>maxTs)maxTs=x.updated_at;if(goutbox[x.id])return;grows[x.id]=fromGRow(x)});
+      if(q.data.length<500)break;
+      prev=cursor;cursor=q.data[q.data.length-1].updated_at;if(cursor===prev)break;
+    }
+    gLast=maxTs;await idbSet('gLast',gLast);await idbSet('grows',grows);
+  }catch(e){
+    if(/growth_samples/.test((e&&e.message)||''))throw new Error('the growth sampling table is missing in Supabase; run the updated supabase-setup.sql once');
+    throw e;
+  }
+}
+function grmsg(t,bad){var m=$('grmsg');m.textContent=t;m.className=bad?'err':'msg'}
+function parseGrowth(txt,np){
+  var out=[],bad=0;
+  String(txt||'').split(/\r?\n/).forEach(function(line){
+    if(!line.trim())return;
+    var a=line.trim().split(/[\s,;]+/).map(function(x){return x===''||x==='-'?null:Number(x)});
+    if(a[0]===null||a.some(function(v){return v!==null&&(!isFinite(v)||v<=0)})){bad++;return}
+    while(a.length<np)a.push(null);
+    out.push(a.slice(0,np));
+  });
+  return{rows:out,bad:bad};
+}
+function gStats(r,gp){
+  var st=gp.map(function(p,j){
+    var a=(r.rows||[]).map(function(row){return row[j]}).filter(function(v){return v!=null&&isFinite(v)});
+    if(!a.length)return null;
+    var m=mean(a),sd=a.length>1?Math.sqrt(a.reduce(function(s,v){return s+(v-m)*(v-m)},0)/(a.length-1)):0;
+    return{n:a.length,mean:m,sd:sd,min:Math.min.apply(null,a),max:Math.max.apply(null,a)};
+  });
+  var K=null,li=-1,wi=-1;gp.forEach(function(p,j){if(p.k==='len')li=j;if(p.k==='wt')wi=j});
+  if((COM==='grouper'||COM==='milkfish')&&li>-1&&wi>-1){var ks=[];(r.rows||[]).forEach(function(row){var L=row[li],W=row[wi];if(L>0&&W>0)ks.push(100*W/(L*L*L))});if(ks.length)K=mean(ks)}
+  return{st:st,K:K,n:(r.rows||[]).length||r.n||0};
+}
+function growthLive(){
+  var el=$('grsum');if(!el)return;
+  var gp=GDEF[COM].gp,pr=parseGrowth($('grtext').value,gp.length);
+  if(!pr.rows.length){el.innerHTML=pr.bad?'<p class="err">'+pr.bad+' line'+(pr.bad===1?'':'s')+' could not be read. Use numbers only, one animal per line.</p>':'';return}
+  var s=gStats({rows:pr.rows},gp);
+  var h='<table class="mini"><thead><tr><th>Parameter</th><th>n</th><th>Mean</th><th>SD</th><th>Min</th><th>Max</th></tr></thead><tbody>';
+  gp.forEach(function(p,j){var x=s.st[j];h+='<tr><td>'+esc(p.n)+' ('+p.u+')</td>'+(x?'<td>'+x.n+'</td><td>'+fx(p,x.mean)+'</td><td>'+fx(p,x.sd)+'</td><td>'+fx(p,x.min)+'</td><td>'+fx(p,x.max)+'</td>':'<td colspan="5">\u2013</td>')+'</tr>'});
+  h+='</tbody></table>';
+  if(s.K!=null)h+='<p class="note">Mean condition factor K = 100 \u00d7 weight (g) \u00f7 length (cm)\u00b3 = '+(Math.round(s.K*100)/100)+'</p>';
+  if(pr.bad)h+='<p class="err">'+pr.bad+' line'+(pr.bad===1?'':'s')+' skipped (numbers only).</p>';
+  el.innerHTML=h;
+}
+function gSaveSample(){
+  var date=$('grd').value,unit=$('gru').value,gp=GDEF[COM].gp;
+  if(!date){grmsg('Choose a date.',1);return}
+  if(!unit){grmsg('Choose a '+GDEF[COM].ul.toLowerCase()+'.',1);return}
+  var pr=parseGrowth($('grtext').value,gp.length);
+  if(pr.bad){grmsg(pr.bad+' line'+(pr.bad===1?'':'s')+' could not be read. Use numbers only, one animal per line.',1);return}
+  if(!pr.rows.length){grmsg('Enter the measurements first, one animal per line.',1);return}
+  var al=$('gralive').value.trim(),ini=$('grinit').value.trim(),A=al===''?null:Number(al),I=ini===''?null:Number(ini);
+  if((A!==null&&!(A>=0))||(I!==null&&!(I>0))){grmsg('Alive and initial counts must be numbers (initial above 0).',1);return}
+  if(A!==null&&I!==null&&A>I){grmsg('Alive count cannot exceed the initial count.',1);return}
+  var id='g_'+COM+'_'+slug(unit)+'_'+date,had=grows[id]&&!grows[id].deleted;
+  grows[id]={id:id,com:COM,unit:unit,date:date,rows:pr.rows,n:pr.rows.length,alive:A,init:I,note:$('grnote').value.trim(),by:(me&&me.email)||'',deleted:false};
+  goutbox[id]=1;
+  if(I>0&&inits['g:'+COM+':'+unit]!==I){inits['g:'+COM+':'+unit]=I;saveSettings()}
+  gpersist();ui();scheduleSync();ws=monday(parse(date));
+  grmsg('Saved '+pr.rows.length+' animals for '+unit+' on '+date+(had?' (replaced the earlier sample for that date)':'')+'.');
+  $('grtext').value='';$('gralive').value='';$('grnote').value='';growthLive();
+  renderGrowthList();render();
+}
+function renderGrowthList(){
+  var el=$('grlist');if(!el)return;
+  var gp=GDEF[COM].gp,recs=gList().filter(function(r){return r.com===COM}).sort(function(a,b){return (a.date+a.unit)<(b.date+b.unit)?1:-1}).slice(0,20);
+  if(!recs.length){el.innerHTML='<p class="empty">No samples saved for '+esc(comName(COM))+' yet.</p>';return}
+  var h='<table class="rt"><thead><tr><th>Date</th><th>'+GDEF[COM].ul+'</th><th>Animals</th>'+gp.map(function(p){return '<th>'+esc(p.n)+' ('+p.u+')</th>'}).join('')+'<th>Survival</th><th></th></tr></thead><tbody>';
+  recs.forEach(function(r){var s=gStats(r,gp);h+='<tr><td>'+r.date+'</td><td><b>'+esc(r.unit)+'</b></td><td>'+(s.n||r.n)+'</td>'+gp.map(function(p,j){var x=s.st[j];return '<td>'+(x?fx(p,x.mean)+' \u00b1 '+fx(p,x.sd):'\u2013')+'</td>'}).join('')+'<td>'+(r.alive!=null&&r.init>0?(Math.round(r.alive/r.init*1000)/10)+'%':'\u2013')+'</td><td>'+(canWrite?'<button data-gid="'+esc(r.id)+'">Delete</button>':'')+'</td></tr>'});
+  el.innerHTML=h+'</tbody></table>';
+}
+function gline(p,series){
+  var W=320,H=150,L=44,R=10,T=10,B=24,pts=[];
+  series.forEach(function(s){s.pts.forEach(function(q){pts.push(q)})});
+  if(!pts.length)return '';
+  var ts=pts.map(function(q){return parse(q.d).getTime()}),vs=pts.map(function(q){return q.v});
+  var t0=Math.min.apply(null,ts),t1=Math.max.apply(null,ts);if(t1===t0){t0-=864e5*3;t1+=864e5*3}
+  var v0=Math.min.apply(null,vs),v1=Math.max.apply(null,vs),pad=(v1-v0)*0.12||1;v0=Math.max(0,v0-pad);v1+=pad;
+  var x=function(t){return L+(W-L-R)*(t-t0)/(t1-t0)},y=function(v){return T+(H-T-B)*(1-(v-v0)/(v1-v0))};
+  var s='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(p.n)+' by sampling date">';
+  [v0,(v0+v1)/2,v1].forEach(function(v){s+='<line class="grid-l" x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'"/><text class="ax" x="'+(L-5)+'" y="'+(y(v)+3)+'" text-anchor="end">'+fx(p,v)+'</text>'});
+  [t0,(t0+t1)/2,t1].forEach(function(t,i){s+='<text class="ax" x="'+x(t)+'" y="'+(H-6)+'" text-anchor="'+(i===0?'start':i===2?'end':'middle')+'">'+new Date(t).toLocaleDateString(undefined,{month:'short',day:'numeric'})+'</text>'});
+  series.forEach(function(sr){
+    if(sr.pts.length>1)s+='<polyline class="ln" style="stroke:'+sr.col+'"'+(sr.dash?' stroke-dasharray="'+sr.dash+'"':'')+' points="'+sr.pts.map(function(q){return x(parse(q.d).getTime())+','+y(q.v)}).join(' ')+'"/>';
+    sr.pts.forEach(function(q){s+='<circle class="dot" style="fill:'+sr.col+'" cx="'+x(parse(q.d).getTime())+'" cy="'+y(q.v)+'" r="4"><title>'+esc(sr.name)+' '+q.d+': '+fx(p,q.v)+' '+p.u+'</title></circle>'})
+  });
+  return s+'</svg>';
+}
+function growthReport(scope){
+  var gp=GDEF[COM].gp,head='<h3 style="margin:22px 0 8px">Growth sampling (monthly)</h3>',fish=(COM==='grouper'||COM==='milkfish');
+  var recs=gList().filter(function(r){return r.com===COM&&(view==='all'||r.unit===view)}).sort(function(a,b){return (a.date+a.unit)<(b.date+b.unit)?-1:1});
+  if(!recs.length)return head+'<p class="note">No growth samples saved for '+esc(comName(COM))+' yet. Add one on the Growth page.</p>';
+  var byU={},ucol={},wi=-1,li=-1,today=ymd(new Date());
+  recs.forEach(function(r){(byU[r.unit]=byU[r.unit]||[]).push(r)});
+  scope.forEach(function(u){ucol[u.id]=u});
+  gp.forEach(function(q,j){if(q.k==='wt')wi=j;if((q.k==='len'||q.k==='cl')&&li<0)li=j});
+  var trs='',due=[],serW=[],serL=[],k=0;
+  Object.keys(byU).forEach(function(u){
+    var arr=byU[u],col=(ucol[u]&&ucol[u].col)||GPAL[k%GPAL.length],dash=(ucol[u]&&ucol[u].dash)||GDASH[k%GDASH.length];k++;
+    var stat=arr.map(function(r){return gStats(r,gp)});
+    if(wi>-1)serW.push({name:u,col:col,dash:dash,pts:arr.map(function(r,i){return stat[i].st[wi]?{d:r.date,v:stat[i].st[wi].mean}:null}).filter(Boolean)});
+    if(li>-1)serL.push({name:u,col:col,dash:dash,pts:arr.map(function(r,i){return stat[i].st[li]?{d:r.date,v:stat[i].st[li].mean}:null}).filter(Boolean)});
+    arr.slice(-6).reverse().forEach(function(r){
+      var i=arr.indexOf(r),prev=i>0?arr[i-1]:null,s=stat[i],s0=prev?stat[i-1]:null,dd=prev?Math.round((parse(r.date)-parse(prev.date))/864e5):0;
+      var means=gp.map(function(q,j){var x=s.st[j];return '<td>'+(x?fx(q,x.mean)+' \u00b1 '+fx(q,x.sd):'\u2013')+'</td>'}).join('');
+      var gain=gp.map(function(q,j){if(!prev||dd<=0||!s.st[j]||!s0.st[j])return '';var g=(s.st[j].mean-s0.st[j].mean)/dd;return (g>=0?'+':'')+(Math.round(g*1000)/1000)+' '+q.u+'/day'}).filter(Boolean).join('<br>');
+      var sgr=(prev&&dd>0&&wi>-1&&s.st[wi]&&s0.st[wi])?(Math.round((Math.log(s.st[wi].mean)-Math.log(s0.st[wi].mean))/dd*10000)/100)+'%/day':'\u2013';
+      var surv=(r.alive!=null&&r.init>0)?(Math.round(r.alive/r.init*1000)/10)+'%':'\u2013';
+      trs+='<tr><td><b>'+esc(u)+'</b><small>'+r.date+'</small></td><td>'+(s.n||r.n)+'</td>'+means+'<td>'+(gain||'\u2013')+'</td><td>'+sgr+'</td>'+(fish?'<td>'+(s.K==null?'\u2013':Math.round(s.K*100)/100)+'</td>':'')+'<td>'+surv+'</td></tr>';
+    });
+    var last=arr[arr.length-1].date,nx=ymd(new Date(parse(last).getTime()+30*864e5));
+    due.push(u+': last sampled '+last+', next due about '+nx+(nx<today?' (overdue)':''));
+  });
+  var h=head+'<p class="note" style="margin:0 0 10px">Monthly sampling, newest first (up to 6 per '+GDEF[COM].ul.toLowerCase()+'). Means are shown with the standard deviation; gain per day and specific growth rate (SGR) compare each sampling with the previous one.</p>';
+  h+='<div class="scroll"><table class="mini rt"><thead><tr><th>'+GDEF[COM].ul+' / date</th><th>Animals</th>'+gp.map(function(q){return '<th>'+esc(q.n)+' ('+q.u+')</th>'}).join('')+'<th>Gain per day</th><th>SGR (weight)</th>'+(fish?'<th>K</th>':'')+'<th>Survival</th></tr></thead><tbody>'+trs+'</tbody></table></div>';
+  h+='<div class="charts" style="margin-top:12px">'+(wi>-1?'<div><p class="ctitle">Mean '+esc(gp[wi].n.toLowerCase())+' ('+gp[wi].u+')</p>'+gline(gp[wi],serW)+'</div>':'')+(li>-1?'<div><p class="ctitle">Mean '+esc(gp[li].n.toLowerCase())+' ('+gp[li].u+')</p>'+gline(gp[li],serL)+'</div>':'')+'</div>';
+  h+='<p class="note" style="margin-top:8px">'+due.map(esc).join('<br>')+'</p>';
+  return h;
+}
+/* ---------- generic settings ---------- */
+function buildGenSettings(){
+  if(!GDEF[COM])return;
+  var cf=gcfg(COM),d=GDEF[COM],h='';
+  $('gsname').textContent=comName(COM);
+  $('gsunits').value=cf.units.join(', ');
+  $('gsunitlbl').textContent=d.ul+'s (comma-separated names)';
+  GPARAM.forEach(function(p){
+    h+='<div class="gsrow">'+(p.opt?'<label class="gsck"><input type="checkbox" id="gsx-'+p.k+'"'+(cf.extra[p.k]?' checked':'')+'> Record '+esc(p.n.toLowerCase())+'</label>':'<span class="gsl">'+esc(p.n)+'</span>')+'<input type="number" step="any" id="gmin-'+p.k+'" value="'+cf.rg[p.k].min+'" aria-label="'+esc(p.n)+' minimum"><input type="number" step="any" id="gmax-'+p.k+'" value="'+cf.rg[p.k].max+'" aria-label="'+esc(p.n)+' maximum"><span class="gsu">'+esc(p.u||'')+'</span></div>';
+  });
+  $('gsgrid').innerHTML=h;
+  $('gsgrowth').textContent=d.gp.map(function(p){return p.n+' ('+p.u+')'}).join(', ');
+  $('gsrefs').innerHTML=d.ref.map(function(r){return '<li>'+esc(r)+'</li>'}).join('');
+}
+/* ---------- generic export, template and import ---------- */
+function gAvg(a){return a.length?Number(mean(a).toFixed(3)):''}
+function gReadingRows(){
+  var ps=gparams(COM),hdr=['Date',GDEF[COM].ul];
+  ps.forEach(function(p){var u=p.u?' ('+p.u+')':'';hdr.push(p.n+' daily mean'+u,p.n+' AM'+u,p.n+' PM'+u)});
+  hdr.push('Notes','Entered by');
+  var map={},order=[],rows=[hdr];
+  gentries.filter(function(e){return e.com===COM}).forEach(function(e){
+    var key=e.date+'|'+e.unit,g=map[key];
+    if(!g){g=map[key]={date:e.date,unit:e.unit,p:{},notes:[],by:{}};order.push(key)}
+    ps.forEach(function(p){var c=g.p[p.k]||(g.p[p.k]={all:[],am:[],pm:[]}),rw=(e.raw&&e.raw[p.k])||(e.vals[p.k]!=null?[e.vals[p.k]]:[]);rw.forEach(function(v){c.all.push(v);(e.sess==='AM'?c.am:c.pm).push(v)})});
+    if(e.note&&g.notes.indexOf(e.note)<0)g.notes.push(e.note);
+    if(e.by)g.by[e.by]=1;
+  });
+  order.sort();
+  order.forEach(function(k){var g=map[k],row=[g.date,g.unit];ps.forEach(function(p){var c=g.p[p.k]||{all:[],am:[],pm:[]};row.push(gAvg(c.all),gAvg(c.am),gAvg(c.pm))});row.push(g.notes.join('; '),Object.keys(g.by).join(', '));rows.push(row)});
+  return rows;
+}
+function gGrowthRows(){
+  var gp=GDEF[COM].gp,fish=(COM==='grouper'||COM==='milkfish'),hdr=['Date',GDEF[COM].ul,'Animals measured'];
+  gp.forEach(function(p){hdr.push(p.n+' mean ('+p.u+')',p.n+' SD',p.n+' min',p.n+' max')});
+  if(fish)hdr.push('Condition factor K');
+  hdr.push('Alive','Initial','Survival (%)','Notes');
+  var rows=[hdr];
+  gList().filter(function(r){return r.com===COM}).sort(function(a,b){return (a.date+a.unit)<(b.date+b.unit)?-1:1}).forEach(function(r){
+    var s=gStats(r,gp),row=[r.date,r.unit,s.n||r.n];
+    gp.forEach(function(p,j){var x=s.st[j];row.push(x?Number(x.mean.toFixed(3)):'',x?Number(x.sd.toFixed(3)):'',x?x.min:'',x?x.max:'')});
+    if(fish)row.push(s.K==null?'':Number(s.K.toFixed(3)));
+    row.push(r.alive==null?'':r.alive,r.init==null?'':r.init,r.alive!=null&&r.init>0?Math.round(r.alive/r.init*1000)/10:'',r.note||'');
+    rows.push(row);
+  });
+  return rows;
+}
+function csvQ(s){s=String(s==null?'':s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}
+function genTemplate(){
+  var ps=gparams(COM),H=['Date','Session','Unit'].concat(ps.map(function(p){return p.n+(p.u?' ('+p.u+')':'')})).concat(['Notes']),rows=[H.map(csvQ).join(',')];
+  gcfg(COM).units.forEach(function(u){['AM','PM'].forEach(function(s){rows.push(['',s,u].concat(ps.map(function(){return ''})).concat(['']).map(csvQ).join(','))})});
+  dl('water-quality-template-'+COM+'.csv','text/csv',rows.join('\r\n'));
+}
+function isGenTemplate(txt){
+  var l=txt.replace(/^\ufeff/,'').split('\n').filter(function(x){return x.replace(/\t/g,'').trim()})[0]||'';
+  var h=l.split('\t').map(function(x){return x.trim().toLowerCase()});
+  return h.indexOf('date')>-1&&h.indexOf('session')>-1&&h.indexOf('unit')>-1;
+}
+function importGen(txt){
+  var lines=txt.replace(/^\ufeff/,'').split('\n').filter(function(l){return l.replace(/\t/g,'').trim()});
+  var H=lines[0].split('\t').map(function(x){return x.trim().toLowerCase().replace(/\(.*?\)/g,'').replace(/\s+/g,' ').trim()});
+  var MAP={'temperature':'temp','salinity':'sal','ph':'ph','dissolved oxygen':'do','ammonia':'nh3','nitrite':'no2'},colOf={};
+  H.forEach(function(h,i){if(MAP[h])colOf[MAP[h]]=i});
+  var iD=H.indexOf('date'),iS=H.indexOf('session'),iU=H.indexOf('unit'),iN=H.indexOf('notes');
+  if(!Object.keys(colOf).length){pmsg('No parameter columns were found. Keep the header row of the template.',1);return}
+  var batch=[],seen={},n=0,empty=0,dn=0,badD={},badS={},noU=0,perU={},ds={},lastDate='',maxD='';
+  lines.slice(1).forEach(function(line){
+    var c=line.split('\t').map(function(x){return x.trim()}),unit=c[iU]||'',sess=(c[iS]||'').toUpperCase(),dtxt=c[iD]||'',pd=dtxt?parseDate(dtxt):'';
+    if(pd)lastDate=pd;
+    if(!unit&&!sess&&!dtxt&&c.every(function(x,i){return i===iD||i===iS||i===iU||x===''}))return;
+    var raw={},vals={},any=false;
+    Object.keys(colOf).forEach(function(k){var v=c[colOf[k]];if(v===undefined||v==='')return;var a=String(v).split(/\s+/).map(Number);if(a.some(function(x){return !isFinite(x)}))return;raw[k]=a;vals[k]=mean(a);any=true});
+    if(!any){empty++;return}
+    if(sess!=='AM'&&sess!=='PM'){badS[sess||'(blank)']=1;return}
+    if(!unit){noU++;return}
+    var date=pd||(dtxt?'':lastDate);if(!date){badD[dtxt||'(blank)']=1;return}
+    var key=unit+'|'+date+'|'+sess;if(seen[key]){dn++;return}seen[key]=1;
+    batch.push({id:Date.now()+''+n+Math.floor(Math.random()*1000),date:date,time:'',com:COM,unit:unit,sess:sess,vals:vals,raw:raw,note:iN>-1?(c[iN]||''):''});
+    n++;perU[unit]=(perU[unit]||0)+1;ds[date]=1;if(date>maxD)maxD=date;
+  });
+  var bd=Object.keys(badD),bs=Object.keys(badS),prob=bd.length||bs.length||noU||dn;
+  var det=(empty?' '+empty+' row'+(empty>1?'s':'')+' had no readings and '+(empty>1?'were':'was')+' skipped.':'')+(bd.length?' Date not recognised: '+bd.slice(0,3).join(', ')+' (use YYYY-MM-DD).':'')+(bs.length?' Session must be AM or PM: '+bs.slice(0,3).join(', ')+'.':'')+(noU?' '+noU+' row'+(noU>1?'s':'')+' had no '+GDEF[COM].ul.toLowerCase()+' name.':'')+(dn?' '+dn+' row'+(dn>1?'s':'')+' repeated a '+GDEF[COM].ul.toLowerCase()+', date and session and '+(dn>1?'were':'was')+' skipped.':'');
+  if(!n){pmsg('Nothing was imported.'+det,1);return}
+  putGenEntries(batch);ws=monday(parse(maxD));$('paste').value='';
+  var nd=Object.keys(ds).length;
+  pmsg('Imported '+n+' reading record'+(n>1?'s':'')+' for '+comName(COM)+' across '+nd+' date'+(nd>1?'s':'')+' ('+Object.keys(perU).map(function(u){return u+': '+perU[u]}).join(', ')+').'+det,!!prob);
+  render();
+}
+/* ---------- wiring: dispatcher, wrappers, commodity switch ---------- */
+function render(){if(!COM||COM==='bsc')renderCrab();else renderGen()}
+function allDates(){
+  if(isGen())return gentries.filter(function(e){return e.com===COM}).map(function(e){return e.date}).concat(gList().filter(function(r){return r.com===COM}).map(function(r){return r.date})).sort();
+  return allDatesCrab();
+}
+function dataStat(){
+  if(!isGen()){dataStatCrab();return}
+  var el=$('dstat');if(!el)return;
+  var ge=gentries.filter(function(e){return e.com===COM}),gs=gList().filter(function(r){return r.com===COM});
+  if(!ge.length&&!gs.length){el.textContent='No '+comName(COM)+' records saved on this device yet.';return}
+  var ds=allDates();
+  el.textContent='Saved on this device for '+comName(COM)+': '+ge.length+' reading record'+(ge.length===1?'':'s')+(gs.length?' and '+gs.length+' growth sample'+(gs.length===1?'':'s'):'')+' from '+ds[0]+' to '+ds[ds.length-1]+'. Use Prev, Next, Latest data or Go to date to move between weeks.';
+}
+function applyComUI(){
+  document.body.setAttribute('data-com',isGen()?'gen':'bsc');
+  $('comsel').value=COM;$('zcsv').textContent=isGen()?'Download growth CSV':'Download zoea CSV';
+  if(isGen()){
+    buildGenForm();buildGenSettings();
+    if(!$('gd').value)$('gd').value=ymd(new Date());if(!$('grd').value)$('grd').value=ymd(new Date());
+    if(!$('gt').value)$('gt').value=now();
+    var iv=inits['g:'+COM+':'+$('gru').value];$('grinit').value=iv?String(iv):'';
+    renderGrowthList();growthLive();
+  }
+}
+function setCom(c){
+  if(!COMS.some(function(x){return x.id===c}))c='bsc';
+  COM=c;save('wq-com',c);view='all';
+  applyComUI();
+  var v=curView;if((v==='zoea'&&isGen())||(v==='growth'&&!isGen()))v='report';
+  showView(v);render();
+}
+$('comsel').innerHTML=COMS.map(function(c){return '<option value="'+c.id+'">'+esc(c.n)+'</option>'}).join('');
+$('comsel').addEventListener('change',function(){setCom(this.value)});
+$('gd').value=ymd(new Date());$('grd').value=ymd(new Date());$('gt').value=now();
+$('gsave').onclick=gSubmit;
+$('grsave').onclick=gSaveSample;
+$('grclear').onclick=function(){$('grtext').value='';$('gralive').value='';$('grnote').value='';growthLive();grmsg('')};
+$('grtext').addEventListener('input',growthLive);
+$('gru').addEventListener('change',function(){var iv=inits['g:'+COM+':'+this.value];$('grinit').value=iv?String(iv):''});
+$('grlist').addEventListener('click',function(ev){
+  var b=ev.target.closest('button[data-gid]');if(!b)return;
+  if(!b.classList.contains('arm')){b.classList.add('arm');b.textContent='Confirm?';setTimeout(function(){if(b.isConnected){b.classList.remove('arm');b.textContent='Delete'}},3000);return}
+  var r=grows[b.dataset.gid];if(!r)return;var c={};Object.keys(r).forEach(function(k){c[k]=r[k]});c.deleted=true;grows[r.id]=c;goutbox[r.id]=1;
+  gpersist();ui();scheduleSync();renderGrowthList();render();
+});
+$('gset').addEventListener('change',function(ev){
+  var t=ev.target,id=t.id||'',u=gcfgAll[COM]=gcfgAll[COM]||{};
+  if(id==='gsunits'){var a=t.value.split(',').map(function(x){return x.trim()}).filter(function(x,i,r){return x&&r.indexOf(x)===i});if(a.length)u.units=a;else{t.value=gcfg(COM).units.join(', ');return}}
+  else if(/^gm(in|ax)-/.test(id)){var k=id.slice(5),mn=parseFloat($('gmin-'+k).value),mx=parseFloat($('gmax-'+k).value);if(!(isFinite(mn)&&isFinite(mx)&&mn<mx)){buildGenSettings();return}u.rg=u.rg||{};u.rg[k]={min:mn,max:mx}}
+  else if(/^gsx-/.test(id)){u.extra=u.extra||{};u.extra[id.slice(4)]=t.checked}
+  else return;
+  saveSettings();buildGenForm();render();
+});
+var tplCrab=$('tpl').onclick;$('tpl').onclick=function(){if(isGen())genTemplate();else tplCrab()};
+var csvCrab=$('csv').onclick;$('csv').onclick=function(){if(!isGen()){csvCrab();return}dl('water-quality-'+COM+'.csv','text/csv',gReadingRows().map(function(r){return r.map(csvQ).join(',')}).join('\n'))};
+var xlsCrab=$('xls').onclick;$('xls').onclick=function(){
+  if(!isGen()){xlsCrab();return}
+  if(typeof XLSX==='undefined'){emsg('The Excel library could not load, so Excel export is unavailable. Use Download CSV instead.',1);return}
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(gReadingRows()),'Readings');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Week','Parameter',GDEF[COM].ul,'Mean','AM mean','PM mean','Min','Max','Readings out of range','Readings']].concat(lastSummary)),'Weekly summary');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(gGrowthRows()),'Growth sampling');
+  dl('water-quality-'+COM+'.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',XLSX.write(wb,{type:'array',bookType:'xlsx'}));
+};
+$('zcsv').onclick=(function(old){return function(){if(!isGen()){old();return}dl('growth-sampling-'+COM+'.csv','text/csv',gGrowthRows().map(function(r){return r.map(csvQ).join(',')}).join('\n'))}})($('zcsv').onclick);
+
+function vsubText(v){
+  if(!isGen())return comName(COM)+' \u00b7 '+VIEWS[v].s;
+  var ul=GDEF[COM].ul.toLowerCase();
+  var o={report:'Graphs, a written interpretation and monthly growth sampling for the week.',add:'Record the AM or PM water parameters for one '+ul+'.',readings:'Every reading saved for the week shown.'};
+  return comName(COM)+' \u00b7 '+(o[v]||VIEWS[v].s);
+}
+applyComUI();
+showView((location.hash||'').slice(1)||load('wq-view','report'));
+
+if(window.__WQ_TEST)window.__wq={sync:sync,rows:function(){return rows},outbox:function(){return outbox},entries:function(){return entries},ready:null};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initApp);else{var __p=initApp();if(window.__WQ_TEST)window.__wq.ready=__p}
+
+render();
+})();
+</script>
+<script>
+if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}
+</script>
+</body>
+</html>
